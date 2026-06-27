@@ -1,0 +1,1209 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Hunter's Cup – Koven Technology</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  :root {
+    --k-black:#0a0c10;--k-dark:#0d1117;--k-dark2:#131920;--k-dark3:#1a2535;
+    --k-blue:#2b7fd4;--k-blue2:#4a9fe8;--k-blue3:#7bbff0;--k-blue4:#b8dbf8;
+    --k-white:#ffffff;--k-off:#e8f1fb;--k-silver:#8ea8c3;
+    --k-gold:#d4a017;--k-gold2:#f0c040;--k-bronze:#cd7f32;
+    --k-green:#22c55e;--k-red:#ef4444;--k-orange:#f59e0b;
+    --k-surface:rgba(43,127,212,0.07);--k-surface2:rgba(43,127,212,0.13);
+    --k-border:rgba(74,159,232,0.18);--k-border2:rgba(74,159,232,0.35);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--k-black);color:var(--k-white);min-height:100vh;overflow-x:hidden;}
+  body::before{content:'';position:fixed;top:0;left:0;right:0;bottom:0;background:radial-gradient(ellipse at 15% 40%,rgba(43,127,212,0.18) 0%,transparent 55%),radial-gradient(ellipse at 85% 10%,rgba(74,159,232,0.10) 0%,transparent 50%);pointer-events:none;z-index:0;}
+  .page{position:relative;z-index:1;padding:0 0 60px;}
+
+  /* HEADER */
+  .header{background:linear-gradient(135deg,var(--k-dark) 0%,var(--k-dark3) 100%);border-bottom:1px solid var(--k-border2);padding:0 28px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;height:72px;}
+  .header-left{display:flex;align-items:center;gap:14px;}
+  .trophy-icon{font-size:32px;filter:drop-shadow(0 0 14px rgba(43,127,212,0.7));}
+  .header-company{font-size:10px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--k-blue2);margin-bottom:1px;}
+  .header-title{font-size:20px;font-weight:800;letter-spacing:-0.5px;color:var(--k-white);line-height:1;}
+  .header-sub{font-size:11px;color:var(--k-blue3);font-style:italic;margin-top:2px;}
+  .header-right{text-align:right;display:flex;align-items:center;gap:12px;}
+  .contest-badge{display:inline-block;background:var(--k-blue);color:var(--k-white);font-size:11px;font-weight:700;padding:4px 12px;border-radius:20px;letter-spacing:0.5px;}
+  .contest-dates{font-size:11px;color:var(--k-silver);margin-top:4px;}
+  .lock-status{display:flex;align-items:center;gap:6px;font-size:12px;padding:5px 12px;border-radius:20px;border:1px solid var(--k-border);cursor:pointer;transition:all 0.2s;user-select:none;}
+  .lock-status.locked{color:var(--k-silver);background:rgba(0,0,0,0.3);}
+  .lock-status.locked:hover{border-color:var(--k-border2);color:var(--k-white);}
+  .lock-status.unlocked{color:var(--k-blue2);background:rgba(43,127,212,0.1);border-color:rgba(43,127,212,0.35);}
+  .lock-status.unlocked:hover{background:rgba(239,68,68,0.1);border-color:rgba(239,68,68,0.4);color:var(--k-red);}
+
+  /* MODAL */
+  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:999;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity 0.25s;}
+  .modal-overlay.visible{opacity:1;pointer-events:all;}
+  .modal{background:linear-gradient(135deg,#0d1a2e,#1a2d4a);border:1px solid var(--k-border2);border-radius:20px;padding:32px 28px;width:100%;max-width:360px;transform:scale(0.9);transition:transform 0.25s;position:relative;}
+  .modal-overlay.visible .modal{transform:scale(1);}
+  .modal-icon{font-size:40px;text-align:center;margin-bottom:14px;}
+  .modal-title{font-size:18px;font-weight:800;text-align:center;color:var(--k-white);margin-bottom:4px;}
+  .modal-sub{font-size:13px;color:var(--k-silver);text-align:center;margin-bottom:22px;}
+  .modal-input-wrap{position:relative;margin-bottom:14px;}
+  .modal-input{width:100%;background:rgba(0,0,0,0.45);border:1px solid var(--k-border2);color:var(--k-white);border-radius:10px;padding:12px 44px 12px 14px;font-size:15px;outline:none;letter-spacing:2px;transition:border-color 0.2s;}
+  .modal-input:focus{border-color:var(--k-blue2);}
+  .modal-input.error{border-color:rgba(239,68,68,0.6);animation:shake 0.35s ease;}
+  @keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+  .modal-eye{position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--k-silver);cursor:pointer;font-size:18px;display:flex;align-items:center;}
+  .modal-eye:hover{color:var(--k-white);}
+  .modal-error{font-size:12px;color:var(--k-red);margin-bottom:12px;display:none;text-align:center;}
+  .modal-error.visible{display:block;}
+  .modal-btn{width:100%;padding:12px;background:var(--k-blue);border:none;border-radius:10px;color:var(--k-white);font-size:15px;font-weight:700;cursor:pointer;transition:all 0.2s;display:flex;align-items:center;justify-content:center;gap:8px;}
+  .modal-btn:hover{background:var(--k-blue2);}
+  .modal-close{position:absolute;top:14px;right:16px;background:none;border:none;color:var(--k-silver);cursor:pointer;font-size:20px;}
+  .modal-close:hover{color:var(--k-white);}
+
+  /* LOCKED SCREEN */
+  .locked-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:64px 24px;text-align:center;}
+  .locked-screen-icon{font-size:52px;margin-bottom:18px;}
+  .locked-screen-title{font-size:18px;font-weight:700;color:var(--k-white);margin-bottom:6px;}
+  .locked-screen-sub{font-size:13px;color:var(--k-silver);margin-bottom:24px;max-width:280px;line-height:1.6;}
+  .locked-screen-btn{background:var(--k-blue);border:none;border-radius:10px;color:var(--k-white);font-size:14px;font-weight:700;padding:11px 28px;cursor:pointer;display:flex;align-items:center;gap:8px;transition:all 0.2s;}
+  .locked-screen-btn:hover{background:var(--k-blue2);}
+
+  /* NAV */
+  .nav{display:flex;gap:4px;padding:12px 28px;border-bottom:1px solid var(--k-border);background:rgba(0,0,0,0.35);overflow-x:auto;white-space:nowrap;}
+  .nav-btn{background:var(--k-surface);border:1px solid var(--k-border);color:var(--k-silver);font-size:13px;font-weight:500;padding:7px 16px;border-radius:8px;cursor:pointer;transition:all 0.2s;display:inline-flex;align-items:center;gap:6px;}
+  .nav-btn:hover{background:var(--k-surface2);color:var(--k-white);border-color:var(--k-border2);}
+  .nav-btn.active{background:var(--k-blue);border-color:var(--k-blue2);color:var(--k-white);}
+  .nav-btn i{font-size:15px;}
+  .lock-tag{font-size:10px;opacity:0.7;}
+
+  /* SECTIONS */
+  .section{display:none;padding:24px 28px;}
+  .section.active{display:block;}
+
+  /* STATS */
+  .stats-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:24px;}
+  .stat-card{background:var(--k-surface);border:1px solid var(--k-border);border-radius:12px;padding:14px 16px;}
+  .stat-label{font-size:11px;color:var(--k-silver);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;}
+  .stat-value{font-size:26px;font-weight:700;color:var(--k-white);line-height:1;}
+  .stat-value.blue{color:var(--k-blue2);}
+
+  /* LEADERBOARD */
+  .leaderboard{display:flex;flex-direction:column;gap:8px;}
+  .lb-row{background:var(--k-surface);border:1px solid var(--k-border);border-radius:12px;padding:14px 18px;display:grid;align-items:center;cursor:pointer;transition:all 0.2s;grid-template-columns:36px 44px 1fr auto auto;gap:12px;}
+  .lb-row:hover{background:var(--k-surface2);transform:translateX(3px);border-color:var(--k-border2);}
+  .lb-row.rank-1{border-color:rgba(212,160,23,0.5);background:rgba(212,160,23,0.05);}
+  .lb-row.rank-2{border-color:rgba(140,168,195,0.35);}
+  .lb-row.rank-3{border-color:rgba(205,127,50,0.35);}
+  .lb-rank{font-size:18px;font-weight:700;color:var(--k-silver);text-align:center;}
+  .rank-1 .lb-rank{color:var(--k-gold2);}
+  .rank-2 .lb-rank{color:var(--k-silver);}
+  .rank-3 .lb-rank{color:var(--k-bronze);}
+  .lb-avatar{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px;flex-shrink:0;border:2px solid var(--k-border2);}
+  .lb-info{min-width:0;}
+  .lb-name{font-size:15px;font-weight:600;color:var(--k-white);margin-bottom:4px;}
+  .lb-meta{display:flex;gap:6px;flex-wrap:wrap;align-items:center;}
+  .office-bar{height:4px;background:rgba(255,255,255,0.08);border-radius:4px;margin-top:3px;overflow:hidden;}
+  .office-fill{height:100%;border-radius:4px;background:linear-gradient(90deg,var(--k-blue),var(--k-blue2));transition:width 1s ease;}
+  .office-fill.over100{background:linear-gradient(90deg,var(--k-blue2),var(--k-blue3),var(--k-blue4),var(--k-blue2));animation:shimmer 2s infinite;background-size:200%;}
+  @keyframes shimmer{0%{background-position:0%}100%{background-position:200%}}
+  .lb-points-col{text-align:right;flex-shrink:0;}
+  .lb-pts{font-size:22px;font-weight:800;color:var(--k-blue2);line-height:1;}
+  .lb-pts-label{font-size:10px;color:var(--k-silver);}
+  .lb-rev-col{text-align:right;flex-shrink:0;}
+  .lb-rev{font-size:13px;font-weight:600;color:var(--k-green);}
+  .lb-accts{font-size:10px;color:var(--k-silver);}
+
+  /* TAGS */
+  .tag{display:inline-flex;align-items:center;gap:4px;font-size:10px;padding:2px 7px;border-radius:10px;font-weight:500;}
+  .tag-blue{background:rgba(43,127,212,0.18);color:var(--k-blue3);border:1px solid rgba(43,127,212,0.25);}
+  .tag-gold{background:rgba(212,160,23,0.15);color:var(--k-gold2);border:1px solid rgba(212,160,23,0.25);}
+  .tag-purple{background:rgba(139,92,246,0.15);color:#c4b5fd;border:1px solid rgba(139,92,246,0.2);}
+  .tag-over{background:rgba(74,159,232,0.2);color:var(--k-blue3);border:1px solid rgba(74,159,232,0.4);}
+  .info-pill{display:inline-flex;align-items:center;gap:5px;background:rgba(43,127,212,0.15);border:1px solid rgba(43,127,212,0.3);color:var(--k-blue3);font-size:11px;padding:4px 10px;border-radius:20px;}
+
+  /* OFFICE */
+  .office-scene{width:100%;aspect-ratio:16/9;max-height:280px;border-radius:12px;border:1px solid var(--k-border2);background:linear-gradient(180deg,#0d1a2e 0%,#071020 100%);position:relative;overflow:hidden;}
+  .office-wall{position:absolute;top:0;left:0;right:0;bottom:30%;background:linear-gradient(180deg,#0a1628 0%,#0f2040 100%);}
+  .office-floor{position:absolute;bottom:0;left:0;right:0;height:30%;background:linear-gradient(180deg,#132040 0%,#0d1830 100%);border-top:1px solid rgba(43,127,212,0.15);}
+  .office-element{position:absolute;font-size:32px;transition:all 0.5s ease;opacity:0;transform:scale(0.5);}
+  .office-element.visible{opacity:1;transform:scale(1);}
+
+  /* PROFILE */
+  .profile-header{background:var(--k-surface);border:1px solid var(--k-border2);border-radius:16px;padding:24px;margin-bottom:20px;display:flex;gap:20px;align-items:flex-start;}
+  .profile-avatar{width:72px;height:72px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:800;flex-shrink:0;border:3px solid var(--k-blue);}
+  .profile-name{font-size:22px;font-weight:700;margin-bottom:8px;}
+  .profile-stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:10px;margin-top:14px;}
+  .profile-stat{background:rgba(0,0,0,0.3);border-radius:8px;padding:10px 12px;border:1px solid var(--k-border);}
+  .profile-stat-val{font-size:20px;font-weight:700;color:var(--k-white);}
+  .profile-stat-lbl{font-size:10px;color:var(--k-silver);text-transform:uppercase;letter-spacing:0.3px;margin-top:2px;}
+  .level-bar-wrap{margin:10px 0;}
+  .level-bar-bg{height:8px;background:rgba(255,255,255,0.07);border-radius:8px;}
+  .level-bar-fill{height:100%;border-radius:8px;background:linear-gradient(90deg,var(--k-blue),var(--k-blue2));transition:width 1s ease;}
+  .level-label{font-size:12px;color:var(--k-silver);margin-top:4px;}
+  .badges-grid{display:flex;flex-wrap:wrap;gap:8px;}
+  .badge{background:var(--k-surface);border:1px solid var(--k-border);border-radius:10px;padding:8px 12px;display:flex;align-items:center;gap:8px;transition:all 0.3s;}
+  .badge.unlocked{border-color:rgba(43,127,212,0.45);background:rgba(43,127,212,0.1);}
+  .badge.locked{opacity:0.3;}
+  .badge-icon{font-size:20px;}
+  .badge-name{font-weight:600;color:var(--k-white);font-size:11px;}
+  .badge-desc{font-size:10px;color:var(--k-silver);margin-top:1px;}
+
+  /* FORMS */
+  .form-card{background:var(--k-surface);border:1px solid var(--k-border);border-radius:16px;padding:24px;margin-bottom:20px;}
+  .form-title{font-size:17px;font-weight:600;margin-bottom:18px;display:flex;align-items:center;gap:8px;color:var(--k-white);}
+  .form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;}
+  .form-group{display:flex;flex-direction:column;gap:6px;}
+  .form-label{font-size:12px;font-weight:500;color:var(--k-silver);}
+  .form-select,.form-input{background:rgba(0,0,0,0.45);border:1px solid var(--k-border);color:var(--k-white);border-radius:8px;padding:9px 12px;font-size:14px;width:100%;outline:none;transition:border-color 0.2s;}
+  .form-select:focus,.form-input:focus{border-color:var(--k-blue2);}
+  .form-select option{background:#0d1a2e;}
+  .checkbox-group{display:flex;flex-wrap:wrap;gap:8px;}
+  .check-pill{display:flex;align-items:center;gap:6px;background:rgba(0,0,0,0.3);border:1px solid var(--k-border);border-radius:20px;padding:6px 14px;cursor:pointer;font-size:13px;color:var(--k-silver);transition:all 0.2s;user-select:none;}
+  .check-pill input{display:none;}
+  .check-pill.checked{background:rgba(43,127,212,0.2);border-color:var(--k-blue);color:var(--k-white);}
+  .pts-preview{background:rgba(43,127,212,0.1);border:1px solid rgba(43,127,212,0.3);border-radius:12px;padding:16px 20px;display:flex;align-items:center;justify-content:space-between;margin-top:16px;}
+  .pts-total{font-size:34px;font-weight:800;color:var(--k-blue2);}
+  .pts-breakdown{font-size:12px;color:var(--k-silver);}
+  .submit-btn{width:100%;padding:13px;margin-top:16px;background:var(--k-blue);border:none;border-radius:10px;color:var(--k-white);font-size:15px;font-weight:700;cursor:pointer;transition:all 0.2s;display:flex;align-items:center;justify-content:center;gap:8px;}
+  .submit-btn:hover{background:var(--k-blue2);}
+  .submit-btn.editing{background:linear-gradient(135deg,#1a6b2a,#22c55e);}
+  .cancel-btn{width:100%;padding:11px;margin-top:8px;background:transparent;border:1px solid var(--k-border2);border-radius:10px;color:var(--k-silver);font-size:14px;font-weight:500;cursor:pointer;transition:all 0.2s;display:none;align-items:center;justify-content:center;gap:8px;}
+  .cancel-btn:hover{background:rgba(255,255,255,0.05);color:var(--k-white);}
+  .cancel-btn.visible{display:flex;}
+  .editing-banner{background:rgba(43,127,212,0.12);border:1px solid rgba(43,127,212,0.4);border-radius:10px;padding:10px 14px;margin-bottom:16px;display:none;align-items:center;gap:8px;font-size:13px;color:var(--k-blue3);}
+  .editing-banner.visible{display:flex;}
+
+  /* SECTION HEADER */
+  .section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;}
+  .section-title{font-size:18px;font-weight:700;display:flex;align-items:center;gap:8px;color:var(--k-white);}
+  .section-subtitle{font-size:13px;color:var(--k-silver);margin-top:2px;}
+
+  /* MONTHLY */
+  .monthly-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:24px;}
+  .monthly-card{background:var(--k-surface);border:1px solid var(--k-border);border-radius:14px;padding:18px;text-align:center;}
+  .monthly-card.champion{border-color:rgba(43,127,212,0.5);background:rgba(43,127,212,0.08);}
+  .monthly-trophy{font-size:30px;margin-bottom:8px;}
+  .monthly-month{font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:var(--k-silver);margin-bottom:6px;}
+  .monthly-winner{font-size:15px;font-weight:700;color:var(--k-white);}
+  .monthly-pts{font-size:12px;color:var(--k-blue2);margin-top:3px;}
+
+  /* CHARTS */
+  .chart-wrap{background:var(--k-surface);border:1px solid var(--k-border);border-radius:14px;padding:18px;margin-bottom:20px;}
+  .chart-title{font-size:14px;font-weight:600;margin-bottom:14px;color:var(--k-silver);}
+
+  /* ENTRIES */
+  .entry-row{background:rgba(0,0,0,0.3);border:1px solid var(--k-border);border-radius:10px;padding:12px 14px;margin-bottom:8px;display:flex;align-items:center;gap:10px;transition:border-color 0.2s;}
+  .entry-row:hover{border-color:var(--k-border2);}
+  .entry-info{flex:1;min-width:0;}
+  .entry-customer{font-size:14px;font-weight:600;color:var(--k-white);}
+  .entry-meta{font-size:11px;color:var(--k-silver);margin-top:2px;}
+  .entry-pts{font-size:20px;font-weight:800;color:var(--k-blue2);min-width:36px;text-align:right;}
+  .entry-actions{display:flex;gap:6px;flex-shrink:0;}
+  .btn-icon{width:30px;height:30px;border-radius:7px;border:1px solid var(--k-border);background:rgba(0,0,0,0.3);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;color:var(--k-silver);transition:all 0.2s;}
+  .btn-icon:hover{color:var(--k-white);border-color:var(--k-border2);}
+  .btn-icon.edit:hover{background:rgba(43,127,212,0.2);border-color:var(--k-blue);color:var(--k-blue2);}
+  .btn-icon.del:hover{background:rgba(239,68,68,0.15);border-color:rgba(239,68,68,0.5);color:var(--k-red);}
+  .del-confirm{background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.3);border-radius:10px;padding:12px 16px;margin-bottom:8px;display:none;}
+  .del-confirm.visible{display:block;}
+  .del-confirm-text{font-size:13px;color:var(--k-off);margin-bottom:10px;}
+  .del-confirm-text strong{color:var(--k-white);}
+  .del-confirm-btns{display:flex;gap:8px;}
+  .del-yes{background:var(--k-red);border:none;border-radius:7px;color:white;font-size:13px;font-weight:600;padding:7px 16px;cursor:pointer;}
+  .del-yes:hover{opacity:0.85;}
+  .del-no{background:transparent;border:1px solid var(--k-border2);border-radius:7px;color:var(--k-silver);font-size:13px;padding:7px 16px;cursor:pointer;}
+  .del-no:hover{color:var(--k-white);}
+
+  /* RULES — key styles */
+  .rules-hero{background:linear-gradient(135deg,rgba(43,127,212,0.15),rgba(74,159,232,0.08));border:1px solid var(--k-border2);border-radius:16px;padding:28px 24px;margin-bottom:20px;text-align:center;}
+  .rules-hero-icon{font-size:52px;margin-bottom:12px;filter:drop-shadow(0 0 14px rgba(43,127,212,0.5));}
+  .rules-hero-title{font-size:22px;font-weight:800;color:var(--k-white);margin-bottom:6px;}
+  .rules-hero-sub{font-size:13px;color:var(--k-blue3);line-height:1.7;max-width:520px;margin:0 auto;}
+
+  .rules-section{margin-bottom:20px;}
+  .rules-card{background:var(--k-surface);border:1px solid var(--k-border);border-radius:14px;overflow:hidden;}
+  .rules-card-header{background:rgba(43,127,212,0.12);border-bottom:1px solid var(--k-border);padding:14px 18px;display:flex;align-items:center;gap:10px;cursor:pointer;user-select:none;transition:background 0.2s;}
+  .rules-card-header:hover{background:rgba(43,127,212,0.18);}
+  .rules-card-icon{font-size:20px;flex-shrink:0;}
+  .rules-card-title{font-size:14px;font-weight:700;color:var(--k-white);flex:1;}
+  .rules-card-chevron{font-size:16px;color:var(--k-silver);transition:transform 0.25s;}
+  .rules-card-chevron.open{transform:rotate(180deg);}
+  .rules-card-body{padding:16px 18px;display:none;}
+  .rules-card-body.open{display:block;}
+
+  .rule-item{display:flex;gap:12px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.04);}
+  .rule-item:last-child{border-bottom:none;padding-bottom:0;}
+  .rule-bullet{width:22px;height:22px;border-radius:50%;background:rgba(43,127,212,0.2);border:1px solid rgba(43,127,212,0.35);display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--k-blue2);flex-shrink:0;margin-top:1px;font-weight:700;}
+  .rule-text{font-size:13px;color:var(--k-off);line-height:1.65;}
+  .rule-text strong{color:var(--k-white);}
+  .rule-text em{color:var(--k-blue3);font-style:normal;}
+
+  .rules-alert{display:flex;gap:12px;background:rgba(212,160,23,0.08);border:1px solid rgba(212,160,23,0.25);border-radius:10px;padding:12px 14px;margin-top:10px;}
+  .rules-alert-icon{font-size:18px;flex-shrink:0;}
+  .rules-alert-text{font-size:12px;color:var(--k-off);line-height:1.6;}
+  .rules-alert-text strong{color:var(--k-gold2);}
+  .rules-alert.blue{background:rgba(43,127,212,0.08);border-color:rgba(43,127,212,0.25);}
+  .rules-alert.blue .rules-alert-text strong{color:var(--k-blue3);}
+  .rules-alert.red{background:rgba(239,68,68,0.08);border-color:rgba(239,68,68,0.25);}
+  .rules-alert.red .rules-alert-text strong{color:#fca5a5;}
+  .rules-alert.green{background:rgba(34,197,94,0.08);border-color:rgba(34,197,94,0.25);}
+  .rules-alert.green .rules-alert-text strong{color:#86efac;}
+
+  .prize-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-top:4px;}
+  .prize-card{background:rgba(0,0,0,0.3);border:1px solid var(--k-border);border-radius:12px;padding:14px;text-align:center;}
+  .prize-card.grand{border-color:rgba(212,160,23,0.4);background:rgba(212,160,23,0.06);}
+  .prize-emoji{font-size:28px;margin-bottom:8px;}
+  .prize-label{font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:var(--k-silver);margin-bottom:4px;}
+  .prize-name{font-size:14px;font-weight:700;color:var(--k-white);}
+  .prize-detail{font-size:11px;color:var(--k-blue3);margin-top:3px;}
+
+  .pts-table{width:100%;border-collapse:collapse;margin-top:4px;}
+  .pts-table th{font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:var(--k-silver);padding:8px 10px;text-align:left;border-bottom:1px solid var(--k-border);}
+  .pts-table td{font-size:13px;color:var(--k-off);padding:9px 10px;border-bottom:1px solid rgba(255,255,255,0.04);}
+  .pts-table tr:last-child td{border-bottom:none;}
+  .pts-table .pts-val{color:var(--k-blue2);font-weight:700;}
+
+  .contact-box{background:rgba(0,0,0,0.3);border:1px solid var(--k-border2);border-radius:10px;padding:14px 16px;display:flex;align-items:center;gap:14px;margin-top:8px;}
+  .contact-avatar{width:40px;height:40px;border-radius:50%;background:rgba(43,127,212,0.2);border:1px solid var(--k-border2);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;}
+  .contact-name{font-size:14px;font-weight:600;color:var(--k-white);}
+  .contact-role{font-size:11px;color:var(--k-silver);margin-top:2px;}
+
+  /* MISC */
+  .comp-ribbon{background:rgba(0,0,0,0.3);border-radius:10px;padding:10px 14px;font-size:12px;border:1px solid var(--k-border);}
+  .comp-row{display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.04);}
+  .comp-row:last-child{border-bottom:none;}
+  .comp-label{color:var(--k-silver);}
+  .comp-val{font-weight:600;color:var(--k-white);}
+  .toast{position:fixed;bottom:24px;right:24px;z-index:9999;background:linear-gradient(135deg,#0d1a2e,#1a2d4a);border:1px solid var(--k-blue);border-radius:14px;padding:16px 20px;max-width:320px;transform:translateY(100px);opacity:0;transition:all 0.4s cubic-bezier(0.175,0.885,0.32,1.275);pointer-events:none;}
+  .toast.show{transform:translateY(0);opacity:1;}
+  .toast-title{font-size:14px;font-weight:700;color:var(--k-blue2);}
+  .toast-body{font-size:13px;color:var(--k-silver);margin-top:4px;}
+  .confetti-piece{position:fixed;width:8px;height:8px;z-index:99999;pointer-events:none;border-radius:2px;animation:confettiFall 3s ease-out forwards;}
+  @keyframes confettiFall{0%{transform:translateY(-20px) rotate(0deg);opacity:1}100%{transform:translateY(100vh) rotate(720deg);opacity:0}}
+  .back-btn{display:inline-flex;align-items:center;gap:6px;background:var(--k-surface);border:1px solid var(--k-border);color:var(--k-silver);font-size:13px;padding:7px 14px;border-radius:8px;cursor:pointer;margin-bottom:20px;transition:all 0.2s;}
+  .back-btn:hover{background:var(--k-surface2);color:var(--k-white);}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+  @media(max-width:640px){.grid2{grid-template-columns:1fr;}}
+  .empty-state{text-align:center;padding:40px 24px;color:var(--k-silver);}
+  .empty-state i{font-size:44px;margin-bottom:12px;display:block;}
+  ::-webkit-scrollbar{width:5px;height:5px;}
+  ::-webkit-scrollbar-thumb{background:rgba(43,127,212,0.25);border-radius:3px;}
+  .rep-avatar-sm{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;}
+
+  /* COVER PAGE */
+  #cover-page{position:fixed;inset:0;z-index:500;background:var(--k-black);display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;}
+  #cover-page::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 20% 30%,rgba(43,127,212,0.28) 0%,transparent 55%),radial-gradient(ellipse at 80% 70%,rgba(74,159,232,0.18) 0%,transparent 50%),radial-gradient(ellipse at 50% 100%,rgba(43,127,212,0.1) 0%,transparent 50%);pointer-events:none;}
+  .cover-grid{position:absolute;inset:0;background-image:linear-gradient(rgba(43,127,212,0.04) 1px,transparent 1px),linear-gradient(90deg,rgba(43,127,212,0.04) 1px,transparent 1px);background-size:60px 60px;pointer-events:none;}
+  .cover-content{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;text-align:center;padding:40px 24px;max-width:700px;width:100%;animation:coverIn 1.1s ease forwards;}
+  @keyframes coverIn{from{opacity:0;transform:translateY(28px);}to{opacity:1;transform:translateY(0);}}
+  .cover-eyebrow{font-size:11px;letter-spacing:4px;text-transform:uppercase;color:var(--k-blue2);font-weight:600;margin-bottom:18px;}
+  .cover-logo-text{font-size:clamp(56px,9vw,96px);font-weight:900;letter-spacing:-3px;line-height:0.92;color:var(--k-white);margin-bottom:6px;}
+  .cover-logo-text span{background:linear-gradient(135deg,var(--k-blue2),var(--k-blue3));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+  .cover-tagline-main{font-size:clamp(13px,2.2vw,18px);color:var(--k-silver);font-style:italic;margin-bottom:10px;letter-spacing:0.3px;}
+  .cover-slogan{font-size:clamp(10px,1.8vw,13px);text-transform:uppercase;letter-spacing:4px;color:var(--k-blue2);font-weight:700;margin-bottom:44px;opacity:0.85;}
+  .cover-divider{width:64px;height:2px;background:linear-gradient(90deg,transparent,var(--k-blue2),transparent);margin:0 auto 40px;}
+  .cover-prizes{display:flex;gap:24px;align-items:center;justify-content:center;flex-wrap:wrap;margin-bottom:48px;}
+  .cover-prize{text-align:center;padding:14px 20px;background:rgba(43,127,212,0.08);border:1px solid rgba(43,127,212,0.2);border-radius:14px;min-width:110px;}
+  .cover-prize.grand{border-color:rgba(212,160,23,0.4);background:rgba(212,160,23,0.06);}
+  .cover-prize-icon{font-size:26px;margin-bottom:6px;}
+  .cover-prize-label{font-size:9px;text-transform:uppercase;letter-spacing:1px;color:var(--k-silver);margin-bottom:3px;}
+  .cover-prize-name{font-size:13px;font-weight:700;color:var(--k-white);}
+  .cover-meta{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;margin-bottom:52px;}
+  .cover-chip{background:rgba(43,127,212,0.12);border:1px solid rgba(43,127,212,0.28);border-radius:20px;padding:7px 16px;font-size:12px;color:var(--k-blue3);font-weight:500;display:flex;align-items:center;gap:6px;}
+  .cover-enter{background:var(--k-blue);border:none;border-radius:14px;color:var(--k-white);font-size:16px;font-weight:800;padding:16px 56px;cursor:pointer;letter-spacing:0.5px;transition:all 0.3s;position:relative;overflow:hidden;}
+  .cover-enter::after{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,0.14),transparent);pointer-events:none;}
+  .cover-enter:hover{background:var(--k-blue2);transform:translateY(-2px);box-shadow:0 14px 36px rgba(43,127,212,0.45);}
+  .cover-enter:active{transform:translateY(0);}
+  .cover-bg-trophy{position:absolute;font-size:360px;opacity:0.025;pointer-events:none;user-select:none;bottom:-80px;right:-50px;filter:blur(3px);line-height:1;}
+  .cover-bg-target{position:absolute;font-size:180px;opacity:0.02;pointer-events:none;user-select:none;top:-20px;left:-20px;filter:blur(2px);line-height:1;}
+
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- COVER PAGE -->
+  <div id="cover-page">
+    <div class="cover-grid"></div>
+    <div class="cover-bg-trophy">🏆</div>
+    <div class="cover-bg-target">🎯</div>
+    <div class="cover-content">
+      <div class="cover-eyebrow">Koven Technology · Q3 2026</div>
+      <div class="cover-logo-text">The Hunter's<br><span>Cup</span></div>
+      <div class="cover-tagline-main">"Every New Customer Builds Your Success."</div>
+      <div class="cover-slogan">Hunt. Close. Conquer.</div>
+      <div class="cover-divider"></div>
+      <div class="cover-prizes">
+        <div class="cover-prize">
+          <div class="cover-prize-icon">🏅</div>
+          <div class="cover-prize-label">July Champion</div>
+          <div class="cover-prize-name">Mini Prize</div>
+        </div>
+        <div class="cover-prize">
+          <div class="cover-prize-icon">🏅</div>
+          <div class="cover-prize-label">August Champion</div>
+          <div class="cover-prize-name">Mini Prize</div>
+        </div>
+        <div class="cover-prize grand">
+          <div class="cover-prize-icon">👑</div>
+          <div class="cover-prize-label">Q3 Champion</div>
+          <div class="cover-prize-name">Grand Prize</div>
+        </div>
+      </div>
+      <div class="cover-meta">
+        <div class="cover-chip"><i class="ti ti-calendar"></i> July 1 – September 30, 2026</div>
+        <div class="cover-chip"><i class="ti ti-users"></i> 5 Hunters</div>
+        <div class="cover-chip"><i class="ti ti-building"></i> Build Your Office</div>
+      </div>
+      <button class="cover-enter" onclick="enterApp()">
+        Enter the Competition &nbsp;→
+      </button>
+    </div>
+  </div>
+
+  <!-- PASSWORD MODAL -->
+  <div class="modal-overlay" id="pw-modal" onclick="handleOverlayClick(event)">
+    <div class="modal">
+      <button class="modal-close" onclick="closeModal()"><i class="ti ti-x"></i></button>
+      <div class="modal-icon">🔐</div>
+      <div class="modal-title">Admin Access Required</div>
+      <div class="modal-sub">Enter the password to access this section.</div>
+      <div class="modal-input-wrap">
+        <input class="modal-input" type="password" id="pw-input" placeholder="Password" onkeydown="if(event.key==='Enter')checkPassword()">
+        <button class="modal-eye" onclick="togglePwVis()" id="pw-eye"><i class="ti ti-eye"></i></button>
+      </div>
+      <div class="modal-error" id="pw-error">Incorrect password. Please try again.</div>
+      <button class="modal-btn" onclick="checkPassword()"><i class="ti ti-lock-open"></i> Unlock</button>
+    </div>
+  </div>
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="header-left">
+      <div class="trophy-icon">🏆</div>
+      <div>
+        <div class="header-company">Koven Technology</div>
+        <div class="header-title">The Hunter's Cup</div>
+        <div class="header-sub">"Every New Customer Builds Your Success."</div>
+      </div>
+    </div>
+    <div class="header-right">
+      <div>
+        <div class="contest-badge">Q3 2026 · LIVE</div>
+        <div class="contest-dates">July 1 – September 30, 2026</div>
+      </div>
+      <div class="lock-status locked" id="lock-status-btn" onclick="handleLockBtn()">
+        <i class="ti ti-lock" id="lock-icon"></i>
+        <span id="lock-label">Admin</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- NAV -->
+  <div class="nav">
+    <button class="nav-btn" onclick="showCover()" id="nav-home"><i class="ti ti-home"></i> Home</button>
+    <button class="nav-btn active" onclick="showSection('leaderboard')" id="nav-leaderboard"><i class="ti ti-trophy"></i> Leaderboard</button>
+    <button class="nav-btn" onclick="navToProtected('submit')" id="nav-submit"><i class="ti ti-plus"></i> Log a Win <span class="lock-tag" id="nav-submit-lock">🔒</span></button>
+    <button class="nav-btn" onclick="navToProtected('entries')" id="nav-entries"><i class="ti ti-list"></i> All Entries <span class="lock-tag" id="nav-entries-lock">🔒</span></button>
+    <button class="nav-btn" onclick="showSection('monthly')" id="nav-monthly"><i class="ti ti-calendar-stats"></i> Monthly Awards</button>
+    <button class="nav-btn" onclick="showSection('rules')" id="nav-rules"><i class="ti ti-book"></i> Rules & Points</button>
+  </div>
+
+  <!-- LEADERBOARD -->
+  <div class="section active" id="section-leaderboard">
+    <div class="stats-row" id="global-stats"></div>
+    <div class="section-header">
+      <div>
+        <div class="section-title"><i class="ti ti-trophy" style="color:var(--k-gold2)"></i> Current Standings</div>
+        <div class="section-subtitle">Click any hunter to view their full profile</div>
+      </div>
+      <div class="info-pill"><i class="ti ti-clock"></i> July tracking</div>
+    </div>
+    <div class="leaderboard" id="leaderboard-list"></div>
+  </div>
+
+  <!-- LOG A WIN -->
+  <div class="section" id="section-submit">
+    <div id="submit-locked-screen" class="locked-screen">
+      <div class="locked-screen-icon">🔒</div>
+      <div class="locked-screen-title">Admin Access Required</div>
+      <div class="locked-screen-sub">You need the admin password to log new account wins.</div>
+      <button class="locked-screen-btn" onclick="openModal('submit')"><i class="ti ti-lock-open"></i> Enter Password</button>
+    </div>
+    <div id="submit-content" style="display:none">
+      <div class="form-card">
+        <div class="form-title"><i class="ti ti-target" style="color:var(--k-blue2)"></i> Log a New Account Win</div>
+        <div class="editing-banner" id="editing-banner"><i class="ti ti-pencil"></i> <span id="editing-desc">Editing entry</span></div>
+        <div class="form-grid">
+          <div class="form-group"><label class="form-label">Sales Rep</label><select class="form-select" id="f-rep"></select></div>
+          <div class="form-group"><label class="form-label">Customer Name</label><input class="form-input" type="text" id="f-customer" placeholder="e.g. Westside Medical"></div>
+          <div class="form-group"><label class="form-label">Revenue Generated</label><input class="form-input" type="number" id="f-revenue" placeholder="e.g. 12500" min="0"></div>
+          <div class="form-group"><label class="form-label">Sale Type</label>
+            <select class="form-select" id="f-saletype">
+              <option value="0">Select type...</option>
+              <option value="surgical">Surgical (+1 pt)</option>
+              <option value="clinic">Clinic (+2 pts)</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group" style="margin-top:14px">
+          <label class="form-label">Demo(s) Completed</label>
+          <div class="checkbox-group">
+            <label class="check-pill" id="pill-virtual"><input type="checkbox" id="f-virtual" onchange="togglePill('pill-virtual','f-virtual');calcPts()"><i class="ti ti-device-laptop"></i> Virtual Demo (+1 pt)</label>
+            <label class="check-pill" id="pill-onsite"><input type="checkbox" id="f-onsite" onchange="togglePill('pill-onsite','f-onsite');calcPts()"><i class="ti ti-car"></i> On-site Demo (+2 pts)</label>
+          </div>
+        </div>
+        <div class="pts-preview">
+          <div>
+            <div style="font-size:12px;color:var(--k-silver);margin-bottom:4px">Points this entry</div>
+            <div class="pts-total" id="pts-total">1</div>
+            <div class="pts-breakdown" id="pts-breakdown">Base: 1 | Revenue: +0 | Sale type: +0 | Demo: +0</div>
+          </div>
+          <div style="font-size:44px">🎯</div>
+        </div>
+        <button class="submit-btn" id="submit-btn" onclick="submitEntry()"><i class="ti ti-check"></i> Submit Entry</button>
+        <button class="cancel-btn" id="cancel-btn" onclick="cancelEdit()"><i class="ti ti-x"></i> Cancel Edit</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ALL ENTRIES -->
+  <div class="section" id="section-entries">
+    <div id="entries-locked-screen" class="locked-screen">
+      <div class="locked-screen-icon">🔒</div>
+      <div class="locked-screen-title">Admin Access Required</div>
+      <div class="locked-screen-sub">You need the admin password to view and edit entries.</div>
+      <button class="locked-screen-btn" onclick="openModal('entries')"><i class="ti ti-lock-open"></i> Enter Password</button>
+    </div>
+    <div id="entries-content" style="display:none">
+      <div class="section-header">
+        <div>
+          <div class="section-title"><i class="ti ti-list" style="color:var(--k-blue2)"></i> All Entries</div>
+          <div class="section-subtitle">Edit or delete any entry — changes update the leaderboard instantly</div>
+        </div>
+        <div class="form-group" style="min-width:160px">
+          <select class="form-select" id="filter-rep" onchange="renderAllEntries()" style="padding:6px 10px;font-size:12px;"></select>
+        </div>
+      </div>
+      <div id="del-confirm-box" class="del-confirm">
+        <div class="del-confirm-text">Delete entry for <strong id="del-customer-name"></strong>? This cannot be undone.</div>
+        <div class="del-confirm-btns">
+          <button class="del-yes" onclick="confirmDelete()">Yes, delete</button>
+          <button class="del-no" onclick="cancelDelete()">Cancel</button>
+        </div>
+      </div>
+      <div id="all-entries-list"></div>
+    </div>
+  </div>
+
+  <!-- MONTHLY -->
+  <div class="section" id="section-monthly">
+    <div class="section-header">
+      <div>
+        <div class="section-title"><i class="ti ti-calendar-stats" style="color:var(--k-blue2)"></i> Monthly Champions</div>
+        <div class="section-subtitle">Monthly recognition — overall points accumulate all quarter</div>
+      </div>
+    </div>
+    <div class="monthly-cards" id="monthly-cards"></div>
+    <div class="chart-wrap"><div class="chart-title">Monthly Points by Hunter</div><div style="position:relative;height:260px"><canvas id="monthly-chart"></canvas></div></div>
+    <div class="chart-wrap"><div class="chart-title">Overall Points — Q3 2026</div><div style="position:relative;height:220px"><canvas id="overall-chart"></canvas></div></div>
+  </div>
+
+  <!-- RULES & POINTS -->
+  <div class="section" id="section-rules">
+
+    <div class="rules-hero">
+      <div class="rules-hero-icon">🏆</div>
+      <div class="rules-hero-title">The Hunter's Cup — Official Rules</div>
+      <div class="rules-hero-sub">Koven Technology Q3 2026 · July 1 – September 30<br>Hunt new business, build your office, claim the Cup.</div>
+    </div>
+
+    <!-- OBJECTIVE -->
+    <div class="rules-section">
+      <div class="rules-card">
+        <div class="rules-card-header" onclick="toggleCard('obj')">
+          <div class="rules-card-icon">🎯</div>
+          <div class="rules-card-title">Contest Objective</div>
+          <i class="ti ti-chevron-down rules-card-chevron open" id="chev-obj"></i>
+        </div>
+        <div class="rules-card-body open" id="body-obj">
+          <div class="rule-item"><div class="rule-bullet">1</div><div class="rule-text">The goal is to <strong>complete your personal office to 100%</strong>, obtain the Hunter's Cup trophy, and <strong>hold the Cup until the end of the competition</strong> on September 30, 2026.</div></div>
+          <div class="rule-item"><div class="rule-bullet">2</div><div class="rule-text">The Hunter's Cup is an <strong>individual competition</strong> focused entirely on finding and developing new business. Only first-time customers qualify.</div></div>
+          <div class="rule-item"><div class="rule-bullet">3</div><div class="rule-text">The rep with the <strong>most Hunter Points at the end of Q3</strong> wins the Hunter's Cup and the grand prize. Monthly winners are recognized at the end of July and August with mini prizes.</div></div>
+          <div class="rule-item"><div class="rule-bullet">4</div><div class="rule-text">Points accumulate across the entire quarter. Monthly standings are for <em>recognition purposes only</em> — they do not reset the overall leaderboard.</div></div>
+          <div class="rules-alert blue" style="margin-top:12px">
+            <div class="rules-alert-icon">💡</div>
+            <div class="rules-alert-text"><strong>The leaderboard updates the moment an item ships to the customer.</strong> Keep building — every new account upgrades your office and moves you closer to the Cup.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PRIZES -->
+    <div class="rules-section">
+      <div class="rules-card">
+        <div class="rules-card-header" onclick="toggleCard('prizes')">
+          <div class="rules-card-icon">🎁</div>
+          <div class="rules-card-title">Prizes & Awards</div>
+          <i class="ti ti-chevron-down rules-card-chevron open" id="chev-prizes"></i>
+        </div>
+        <div class="rules-card-body open" id="body-prizes">
+          <div class="prize-grid">
+            <div class="prize-card">
+              <div class="prize-emoji">🏅</div>
+              <div class="prize-label">July Champion</div>
+              <div class="prize-name">Mini Prize</div>
+              <div class="prize-detail">Top hunter points in July</div>
+            </div>
+            <div class="prize-card">
+              <div class="prize-emoji">🏅</div>
+              <div class="prize-label">August Champion</div>
+              <div class="prize-name">Mini Prize</div>
+              <div class="prize-detail">Top hunter points in August</div>
+            </div>
+            <div class="prize-card grand">
+              <div class="prize-emoji">👑</div>
+              <div class="prize-label">Q3 Overall Champion</div>
+              <div class="prize-name">Grand Prize</div>
+              <div class="prize-detail">Most total points July–September</div>
+            </div>
+          </div>
+          <div class="rules-alert" style="margin-top:14px">
+            <div class="rules-alert-icon">⚠️</div>
+            <div class="rules-alert-text"><strong>Prior monthly winners are not changed</strong> if probe sales are later corrected and reassigned after month-end. However, those corrected points <strong>will count toward the current and future months</strong> on the overall leaderboard.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- NEW ACCOUNT RULES -->
+    <div class="rules-section">
+      <div class="rules-card">
+        <div class="rules-card-header" onclick="toggleCard('accounts')">
+          <div class="rules-card-icon">🏥</div>
+          <div class="rules-card-title">What Counts as a New Account</div>
+          <i class="ti ti-chevron-down rules-card-chevron open" id="chev-accounts"></i>
+        </div>
+        <div class="rules-card-body open" id="body-accounts">
+          <div class="rule-item"><div class="rule-bullet">1</div><div class="rule-text">A customer qualifies as <strong>new</strong> only if they have <strong>not purchased a Koven Doppler or probe within the previous 3 years</strong>.</div></div>
+          <div class="rule-item"><div class="rule-bullet">2</div><div class="rule-text">If it is a <strong>new department within an existing hospital or health system</strong>, that sale may qualify — but it is <em>subject to management approval</em> on a case-by-case basis.</div></div>
+          <div class="rule-item"><div class="rule-bullet">3</div><div class="rule-text">All qualifying new accounts <strong>must have clear, detailed notes entered in Goldmine</strong>.</div></div>
+          <div class="rule-item"><div class="rule-bullet">4</div><div class="rule-text">The <strong>leaderboard updates once the item ships</strong> to the customer — not at the time of order entry or invoice.</div></div>
+          <div class="rules-alert" style="margin-top:12px">
+            <div class="rules-alert-icon">⚠️</div>
+            <div class="rules-alert-text"><strong>No Goldmine notes = no points.</strong> Accounts without notes documented in Goldmine will not be counted, regardless of qualifying status.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RETURNS -->
+    <div class="rules-section">
+      <div class="rules-card">
+        <div class="rules-card-header" onclick="toggleCard('returns')">
+          <div class="rules-card-icon">↩️</div>
+          <div class="rules-card-title">Returns & Adjustments</div>
+          <i class="ti ti-chevron-down rules-card-chevron open" id="chev-returns"></i>
+        </div>
+        <div class="rules-card-body open" id="body-returns">
+          <div class="rule-item"><div class="rule-bullet">1</div><div class="rule-text">If a rep receives a <strong>return during the contest period</strong>, they will <strong>lose the revenue, points, and all associated leaderboard data</strong> tied to that sale — including account count, sale type bonus, and demo bonus.</div></div>
+          <div class="rule-item"><div class="rule-bullet">2</div><div class="rule-text">Returns are processed immediately upon confirmation. The leaderboard will reflect the adjustment in real time.</div></div>
+          <div class="rule-item"><div class="rule-bullet">3</div><div class="rule-text">A returned account that was previously credited toward a monthly win <strong>does not retroactively change that month's winner</strong>, but the points will be deducted from the rep's overall Q3 total going forward.</div></div>
+          <div class="rules-alert red" style="margin-top:12px">
+            <div class="rules-alert-icon">🚨</div>
+            <div class="rules-alert-text"><strong>Returns cost you everything associated with that sale.</strong> Revenue, points, account count, bonuses — all removed.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TIEBREAKERS -->
+    <div class="rules-section">
+      <div class="rules-card">
+        <div class="rules-card-header" onclick="toggleCard('ties')">
+          <div class="rules-card-icon">⚖️</div>
+          <div class="rules-card-title">Tiebreaker Rules</div>
+          <i class="ti ti-chevron-down rules-card-chevron open" id="chev-ties"></i>
+        </div>
+        <div class="rules-card-body open" id="body-ties">
+          <div class="rule-item"><div class="rule-bullet">1</div><div class="rule-text"><strong>First tiebreaker:</strong> Total revenue generated from new accounts to the current date. The rep with the higher cumulative revenue wins the tiebreak.</div></div>
+          <div class="rule-item"><div class="rule-bullet">2</div><div class="rule-text"><strong>Second tiebreaker:</strong> Total number of new accounts to the current date. The rep with more qualifying new accounts wins.</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SUBMISSION PROCESS -->
+    <div class="rules-section">
+      <div class="rules-card">
+        <div class="rules-card-header" onclick="toggleCard('submit')">
+          <div class="rules-card-icon">📧</div>
+          <div class="rules-card-title">How to Submit a New Account</div>
+          <i class="ti ti-chevron-down rules-card-chevron open" id="chev-submit"></i>
+        </div>
+        <div class="rules-card-body open" id="body-submit">
+          <div class="rule-item"><div class="rule-bullet">1</div><div class="rule-text"><strong>Email the new customer invoice to Carolyn</strong> and CC Stephen to officially track the new business. This is required for every qualifying account.</div></div>
+          <div class="rule-item"><div class="rule-bullet">2</div><div class="rule-text">Ensure <strong>clear notes are entered in Goldmine</strong>.</div></div>
+          <div class="rule-item"><div class="rule-bullet">3</div><div class="rule-text">Once the item ships and the submission is verified, the leaderboard will be updated and points will be awarded.</div></div>
+          <div style="margin-top:14px">
+            <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--k-silver);margin-bottom:10px">Submit invoices to:</div>
+            <div class="contact-box">
+              <div class="contact-avatar">👩‍💼</div>
+              <div><div class="contact-name">Carolyn</div><div class="contact-role">Primary recipient — new customer invoices</div></div>
+            </div>
+            <div class="contact-box" style="margin-top:8px">
+              <div class="contact-avatar">👨‍💼</div>
+              <div><div class="contact-name">Stephen</div><div class="contact-role">CC on all new account invoice submissions</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- POINT SYSTEM -->
+    <div class="rules-section">
+      <div class="rules-card">
+        <div class="rules-card-header" onclick="toggleCard('points')">
+          <div class="rules-card-icon">📊</div>
+          <div class="rules-card-title">Point System</div>
+          <i class="ti ti-chevron-down rules-card-chevron open" id="chev-points"></i>
+        </div>
+        <div class="rules-card-body open" id="body-points">
+          <table class="pts-table">
+            <thead><tr><th>Category</th><th>Condition</th><th>Points</th></tr></thead>
+            <tbody>
+              <tr><td>🏁 New Account</td><td>Any qualifying new customer</td><td class="pts-val">+1</td></tr>
+              <tr><td rowspan="4">💵 Revenue Bonus</td><td>$0 – $5,000</td><td class="pts-val">+1</td></tr>
+              <tr><td>$5,001 – $10,000</td><td class="pts-val">+2</td></tr>
+              <tr><td>$10,001 – $25,000</td><td class="pts-val">+3</td></tr>
+              <tr><td>$25,000+</td><td class="pts-val">+4</td></tr>
+              <tr><td rowspan="2">🏥 Sale Type</td><td>Surgical sale</td><td class="pts-val">+1</td></tr>
+              <tr><td>Clinic sale</td><td class="pts-val">+2</td></tr>
+              <tr><td rowspan="2">💻 Demo Bonus</td><td>Virtual demo</td><td class="pts-val">+1</td></tr>
+              <tr><td>On-site demo</td><td class="pts-val">+2</td></tr>
+            </tbody>
+          </table>
+          <div class="rules-alert blue" style="margin-top:12px">
+            <div class="rules-alert-icon">⭐</div>
+            <div class="rules-alert-text"><strong>Maximum 10 points per entry:</strong> Base(1) + Revenue(4) + Clinic(2) + Virtual(1) + On-site(2). Both demo types can be earned on the same sale.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- OFFICE & LEVELS -->
+    <div class="rules-section">
+      <div class="rules-card">
+        <div class="rules-card-header" onclick="toggleCard('office')">
+          <div class="rules-card-icon">🏢</div>
+          <div class="rules-card-title">Office Progression & Hunter Levels</div>
+          <i class="ti ti-chevron-down rules-card-chevron open" id="chev-office"></i>
+        </div>
+        <div class="rules-card-body open" id="body-office">
+          <div class="rule-item"><div class="rule-bullet">1</div><div class="rule-text">Every rep starts with an <strong>empty office with moving boxes</strong>. As you earn points, your office upgrades automatically — from a basic desk to an executive corner office with the Hunter's Cup trophy.</div></div>
+          <div class="rule-item"><div class="rule-bullet">2</div><div class="rule-text"><strong>30 points = 100% office completion.</strong> Reaching 100% means you've built the ultimate office and earned the right to hold the Hunter's Cup. Keep earning points beyond 100% to show your dominance.</div></div>
+          <div class="rule-item"><div class="rule-bullet">3</div><div class="rule-text">Office stages: 📦 Empty → 🪑 Desk & Chair → 💻 Computer & Phone → 🖼 Wall Décor → 🪴 Plants & Upgraded Furniture → 🛋 Executive Conference Area → 🏆 Corner Office + Trophy.</div></div>
+          <div style="margin-top:14px;display:flex;flex-direction:column;gap:6px;" id="levels-list-rules"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- GENERAL CONDUCT -->
+    <div class="rules-section">
+      <div class="rules-card">
+        <div class="rules-card-header" onclick="toggleCard('conduct')">
+          <div class="rules-card-icon">📋</div>
+          <div class="rules-card-title">General Contest Rules & Conduct</div>
+          <i class="ti ti-chevron-down rules-card-chevron open" id="chev-conduct"></i>
+        </div>
+        <div class="rules-card-body open" id="body-conduct">
+          <div class="rule-item"><div class="rule-bullet">1</div><div class="rule-text">Points are awarded based on <strong>shipped orders only</strong> — not quotes, orders in progress, or unshipped inventory. The leaderboard updates upon confirmed shipment.</div></div>
+          <div class="rule-item"><div class="rule-bullet">2</div><div class="rule-text">Contest runs <strong>July 1 through September 30, 2026</strong>. The overall Q3 champion is determined by total Hunter Points accumulated across all three months. Monthly champions are determined at the end of each respective month.</div></div>
+          <div class="rule-item"><div class="rule-bullet">3</div><div class="rule-text"><strong>Have fun.</strong> The Hunter's Cup is designed to celebrate new business, recognize achievement, and build a culture of hunting. Help each other grow — the rising tide lifts all boats.</div></div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- end rules section -->
+
+  <!-- PROFILE -->
+  <div class="section" id="section-profile">
+    <button class="back-btn" onclick="showSection('leaderboard')"><i class="ti ti-arrow-left"></i> Back to Leaderboard</button>
+    <div id="profile-content"></div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast">
+  <div class="toast-title" id="toast-title"></div>
+  <div class="toast-body" id="toast-body"></div>
+</div>
+
+<script>
+const PASSWORD = 'Doppler314';
+let isUnlocked = false;
+let pendingSection = null;
+
+// ── COVER PAGE ────────────────────────────────────────
+function enterApp() {
+  const cover = document.getElementById('cover-page');
+  cover.style.transition = 'opacity 0.55s ease, transform 0.55s ease';
+  cover.style.opacity = '0';
+  cover.style.transform = 'scale(1.03)';
+  setTimeout(() => { cover.style.display = 'none'; }, 560);
+}
+function showCover() {
+  const cover = document.getElementById('cover-page');
+  cover.style.display = 'flex';
+  cover.style.transition = 'none';
+  cover.style.opacity = '0';
+  cover.style.transform = 'scale(1.03)';
+  cover.offsetHeight; // force reflow
+  cover.style.transition = 'opacity 0.45s ease, transform 0.45s ease';
+  cover.style.opacity = '1';
+  cover.style.transform = 'scale(1)';
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+}
+
+const REPS = [
+  { id:1, name:'Shannon Conley',  initials:'SC', color:'#4a9fe8', bg:'rgba(74,159,232,0.18)' },
+  { id:2, name:'Brendan Bickert', initials:'BB', color:'#22c55e', bg:'rgba(34,197,94,0.18)'  },
+  { id:3, name:'Tim Winter',      initials:'TW', color:'#f59e0b', bg:'rgba(245,158,11,0.18)' },
+  { id:4, name:'Joel Lamb',       initials:'JL', color:'#a78bfa', bg:'rgba(167,139,250,0.18)'},
+  { id:5, name:'Dani Coyne',      initials:'DC', color:'#38bdf8', bg:'rgba(56,189,248,0.18)' },
+];
+
+const LEVELS = [
+  { name:'Rookie Hunter',    emoji:'🌱', min:0,  max:4  },
+  { name:'Scout',            emoji:'🎯', min:5,  max:9  },
+  { name:'Tracker',          emoji:'🧭', min:10, max:19 },
+  { name:'Skilled Hunter',   emoji:'🏹', min:20, max:34 },
+  { name:'Elite Hunter',     emoji:'🦅', min:35, max:54 },
+  { name:'Master Hunter',    emoji:'⭐', min:55, max:79 },
+  { name:'Legendary Hunter', emoji:'👑', min:80, max:Infinity },
+];
+
+const BADGES_DEF = [
+  { id:'first_strike',   icon:'🎯', name:'First Strike',       desc:'Logged first account',    check: s => s.totalAccounts >= 1 },
+  { id:'box_breaker',    icon:'📦', name:'Box Breaker',         desc:'5+ new accounts',         check: s => s.totalAccounts >= 5 },
+  { id:'office_builder', icon:'🏗',  name:'Office Builder',      desc:'Reached 25% office',      check: s => officePercent(s.totalPts) >= 25 },
+  { id:'rainmaker',      icon:'💰', name:'Rainmaker',           desc:'$50k+ total revenue',     check: s => s.totalRevenue >= 50000 },
+  { id:'clinic_champ',   icon:'🏥', name:'Clinic Champion',     desc:'3+ clinic sales',         check: s => s.clinicSales >= 3 },
+  { id:'surgical_spec',  icon:'🩺', name:'Surgical Specialist', desc:'3+ surgical sales',       check: s => s.surgicalSales >= 3 },
+  { id:'virtual_exp',    icon:'💻', name:'Virtual Expert',      desc:'5+ virtual demos',        check: s => s.virtualDemos >= 5 },
+  { id:'road_warrior',   icon:'🚗', name:'Road Warrior',        desc:'5+ on-site demos',        check: s => s.onsiteDemos >= 5 },
+  { id:'top_hunter',     icon:'🏆', name:'Top Hunter',          desc:'Reached #1 rank',         check: s => s._isFirst },
+  { id:'hc_champion',    icon:'👑', name:"Hunter's Cup Champ",  desc:'Win the Cup',             check: s => false },
+];
+
+const OFFICE_STAGES = [
+  { pct:0,   label:'Empty Office',               emoji:'📦', elements:['📦','📦','📦'] },
+  { pct:15,  label:'Desk & Chair',               emoji:'🪑', elements:['📦','🪑','💼'] },
+  { pct:30,  label:'Computer & Phone',           emoji:'💻', elements:['🪑','💻','📱'] },
+  { pct:45,  label:'Wall Décor & Branding',      emoji:'🖼',  elements:['💻','📱','🖼'] },
+  { pct:60,  label:'Plants & Upgraded Furniture',emoji:'🪴', elements:['💻','🪴','🖼'] },
+  { pct:75,  label:'Executive Conference Area',  emoji:'🛋',  elements:['🛋','🪴','💻','🖼'] },
+  { pct:100, label:'Corner Office + Trophy',     emoji:'🏆', elements:['🛋','🏆','🪴','🖼'] },
+];
+
+const PTS_FOR_100 = 30;
+let nextId = 100;
+let entries = [
+  { id:1,  repId:1, customer:'Riverside Orthopedics', revenue:18000, saletype:'surgical', virtual:true,  onsite:false, pts:6, date:'Jul 3' },
+  { id:2,  repId:1, customer:'Metro Sports Medicine', revenue:32000, saletype:'clinic',   virtual:false, onsite:true,  pts:8, date:'Jul 8' },
+  { id:3,  repId:2, customer:'Pacific Health Group',  revenue:7500,  saletype:'clinic',   virtual:true,  onsite:true,  pts:8, date:'Jul 5' },
+  { id:4,  repId:2, customer:'Bayside PT',            revenue:4200,  saletype:'surgical', virtual:false, onsite:false, pts:3, date:'Jul 10' },
+  { id:5,  repId:3, customer:'Heartland Hospital',    revenue:22000, saletype:'clinic',   virtual:true,  onsite:true,  pts:9, date:'Jul 2' },
+  { id:6,  repId:3, customer:'Midwest Spine Center',  revenue:9000,  saletype:'surgical', virtual:true,  onsite:false, pts:5, date:'Jul 7' },
+  { id:7,  repId:4, customer:'Northeast Surgical',    revenue:15000, saletype:'surgical', virtual:false, onsite:true,  pts:7, date:'Jul 4' },
+  { id:8,  repId:4, customer:'Boston Medical Grp',    revenue:3000,  saletype:'clinic',   virtual:true,  onsite:false, pts:5, date:'Jul 9' },
+  { id:9,  repId:5, customer:'Desert Orthopedics',    revenue:28000, saletype:'clinic',   virtual:true,  onsite:true,  pts:9, date:'Jul 6' },
+];
+
+let editingId = null;
+let pendingDelId = null;
+
+// ── PASSWORD ──────────────────────────────────────────
+function openModal(target) {
+  pendingSection = target||null;
+  document.getElementById('pw-input').value='';
+  document.getElementById('pw-error').classList.remove('visible');
+  document.getElementById('pw-input').classList.remove('error');
+  document.getElementById('pw-modal').classList.add('visible');
+  setTimeout(()=>document.getElementById('pw-input').focus(),200);
+}
+function closeModal() { document.getElementById('pw-modal').classList.remove('visible'); pendingSection=null; }
+function handleOverlayClick(e) { if(e.target===document.getElementById('pw-modal')) closeModal(); }
+function checkPassword() {
+  if(document.getElementById('pw-input').value===PASSWORD){
+    isUnlocked=true; closeModal(); updateLockUI();
+    if(pendingSection){ showProtectedSection(pendingSection); pendingSection=null; }
+    showToast('🔓 Access granted','Admin mode is now active for this session.',true);
+  } else {
+    const inp=document.getElementById('pw-input');
+    inp.classList.add('error');
+    document.getElementById('pw-error').classList.add('visible');
+    inp.value='';
+    setTimeout(()=>inp.classList.remove('error'),400);
+  }
+}
+function togglePwVis(){
+  const inp=document.getElementById('pw-input');
+  const icon=document.getElementById('pw-eye').querySelector('i');
+  inp.type=inp.type==='password'?'text':'password';
+  icon.className=inp.type==='password'?'ti ti-eye':'ti ti-eye-off';
+}
+function handleLockBtn(){
+  if(isUnlocked){
+    isUnlocked=false; updateLockUI();
+    const active=document.querySelector('.section.active');
+    if(active&&(active.id==='section-submit'||active.id==='section-entries')) showSection('leaderboard');
+    showToast('🔒 Locked','Admin access has been revoked.',false);
+  } else { openModal(null); }
+}
+function updateLockUI(){
+  const btn=document.getElementById('lock-status-btn');
+  btn.className='lock-status '+(isUnlocked?'unlocked':'locked');
+  document.getElementById('lock-icon').className='ti ti-'+(isUnlocked?'lock-open':'lock');
+  document.getElementById('lock-label').textContent=isUnlocked?'Lock':'Admin';
+  document.getElementById('nav-submit-lock').textContent=isUnlocked?'🔓':'🔒';
+  document.getElementById('nav-entries-lock').textContent=isUnlocked?'🔓':'🔒';
+}
+function navToProtected(id){ isUnlocked?showProtectedSection(id):openModal(id); }
+function showProtectedSection(id){
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('section-'+id).classList.add('active');
+  const nb=document.getElementById('nav-'+id); if(nb) nb.classList.add('active');
+  document.getElementById(id+'-locked-screen').style.display='none';
+  document.getElementById(id+'-content').style.display='block';
+  if(id==='entries') renderAllEntries();
+}
+
+// ── NAV ───────────────────────────────────────────────
+function showSection(id){
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('section-'+id).classList.add('active');
+  const nb=document.getElementById('nav-'+id); if(nb) nb.classList.add('active');
+  if(id==='leaderboard') renderLeaderboard();
+  if(id==='monthly')     renderMonthly();
+  if(id==='rules')       renderRulesLevels();
+}
+
+// ── HELPERS ───────────────────────────────────────────
+function calcPoints(revenue,saletype,virtual,onsite){
+  let p=1;
+  if(revenue>0&&revenue<=5000) p+=1; else if(revenue>5000&&revenue<=10000) p+=2; else if(revenue>10000&&revenue<=25000) p+=3; else if(revenue>25000) p+=4;
+  if(saletype==='surgical') p+=1; else if(saletype==='clinic') p+=2;
+  if(virtual) p+=1; if(onsite) p+=2;
+  return p;
+}
+function repStats(repId){
+  const rows=entries.filter(e=>e.repId===repId);
+  const s={totalPts:0,totalAccounts:rows.length,totalRevenue:0,clinicSales:0,surgicalSales:0,virtualDemos:0,onsiteDemos:0,_isFirst:false,monthlyPts:{July:0,August:0,September:0}};
+  rows.forEach(e=>{
+    s.totalPts+=e.pts; s.totalRevenue+=e.revenue;
+    if(e.saletype==='clinic') s.clinicSales++; if(e.saletype==='surgical') s.surgicalSales++;
+    if(e.virtual) s.virtualDemos++; if(e.onsite) s.onsiteDemos++;
+    if(e.date&&e.date.startsWith('Jul')) s.monthlyPts.July+=e.pts;
+    else if(e.date&&e.date.startsWith('Aug')) s.monthlyPts.August+=e.pts;
+    else s.monthlyPts.September+=e.pts;
+  });
+  return s;
+}
+function officePercent(pts){ return Math.round((pts/PTS_FOR_100)*100); }
+function barWidth(pct){ return Math.min(pct,100); }
+function getLevel(pts){ return LEVELS.find(l=>pts>=l.min&&pts<=l.max)||LEVELS[0]; }
+function getNextLevel(pts){ const i=LEVELS.findIndex(l=>pts>=l.min&&pts<=l.max); return i<LEVELS.length-1?LEVELS[i+1]:null; }
+function getOfficeStage(pct){ const c=Math.min(pct,100); let st=OFFICE_STAGES[0]; for(const s of OFFICE_STAGES){if(c>=s.pct) st=s;} return st; }
+function getNextOfficeStage(pct){ const c=Math.min(pct,100); for(const s of OFFICE_STAGES){if(s.pct>c) return s;} return null; }
+function rankSuffix(r){ return r===1?'1st':r===2?'2nd':r===3?'3rd':r+'th'; }
+function fmtMoney(n){ return n>=1000000?'$'+(n/1000000).toFixed(1)+'M':n>=1000?'$'+Math.round(n/1000)+'k':'$'+n; }
+function getRankedReps(){
+  return REPS.map(r=>({rep:r,stats:repStats(r.id)})).sort((a,b)=>b.stats.totalPts-a.stats.totalPts).map((item,i)=>{item.rank=i+1;if(i===0)item.stats._isFirst=true;return item;});
+}
+
+// ── LEADERBOARD ───────────────────────────────────────
+function renderLeaderboard(){
+  const ranked=getRankedReps();
+  const totPts=ranked.reduce((a,b)=>a+b.stats.totalPts,0);
+  const totAcct=ranked.reduce((a,b)=>a+b.stats.totalAccounts,0);
+  const totRev=ranked.reduce((a,b)=>a+b.stats.totalRevenue,0);
+  document.getElementById('global-stats').innerHTML=`
+    <div class="stat-card"><div class="stat-label">Total Hunter Points</div><div class="stat-value blue">${totPts}</div></div>
+    <div class="stat-card"><div class="stat-label">New Accounts Won</div><div class="stat-value">${totAcct}</div></div>
+    <div class="stat-card"><div class="stat-label">Total New Revenue</div><div class="stat-value" style="font-size:20px;padding-top:4px">${fmtMoney(totRev)}</div></div>
+    <div class="stat-card"><div class="stat-label">Active Hunters</div><div class="stat-value">${REPS.length}</div></div>
+    <div class="stat-card"><div class="stat-label">Contest Progress</div><div class="stat-value">July</div><div style="font-size:10px;color:var(--k-green);margin-top:4px">Week 4 of 13</div></div>`;
+  const medals=['🥇','🥈','🥉'];
+  document.getElementById('leaderboard-list').innerHTML=ranked.map((item,i)=>{
+    const s=item.stats; const lvl=getLevel(s.totalPts);
+    const pct=officePercent(s.totalPts); const bw=barWidth(pct); const over=pct>100;
+    const stage=getOfficeStage(pct); const badges=BADGES_DEF.filter(b=>b.check(s));
+    return `<div class="lb-row rank-${item.rank}" onclick="showProfile(${item.rep.id})">
+      <div class="lb-rank">${i<3?medals[i]:item.rank}</div>
+      <div class="lb-avatar" style="background:${item.rep.bg};color:${item.rep.color}">${item.rep.initials}</div>
+      <div class="lb-info">
+        <div class="lb-name">${item.rep.name}</div>
+        <div class="lb-meta">
+          <span class="tag tag-blue">${lvl.emoji} ${lvl.name}</span>
+          ${over?`<span class="tag tag-over">✨ ${pct}% — Beyond Full!</span>`:''}
+          ${badges.length>0?`<span class="tag tag-purple">${badges.length} badge${badges.length!==1?'s':''}</span>`:''}
+        </div>
+        <div style="margin-top:6px">
+          <div style="font-size:10px;color:var(--k-silver)">${stage.emoji} ${stage.label} · ${pct}%</div>
+          <div class="office-bar"><div class="office-fill ${over?'over100':''}" style="width:${bw}%"></div></div>
+        </div>
+      </div>
+      <div class="lb-rev-col"><div class="lb-rev">${fmtMoney(s.totalRevenue)}</div><div class="lb-accts">${s.totalAccounts} accts</div></div>
+      <div class="lb-points-col"><div class="lb-pts">${s.totalPts}</div><div class="lb-pts-label">pts</div></div>
+    </div>`;
+  }).join('');
+}
+
+// ── RULES LEVELS ─────────────────────────────────────
+function renderRulesLevels(){
+  document.getElementById('levels-list-rules').innerHTML=LEVELS.map(l=>`
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:9px 12px;background:rgba(0,0,0,0.3);border:1px solid var(--k-border);border-radius:8px">
+      <div style="display:flex;align-items:center;gap:8px"><span style="font-size:20px">${l.emoji}</span><span style="font-size:13px;font-weight:600;color:var(--k-white)">${l.name}</span></div>
+      <span style="font-size:11px;color:var(--k-silver)">${l.max===Infinity?l.min+'+ pts':l.min+'–'+l.max+' pts'}</span>
+    </div>`).join('');
+}
+
+// ── ACCORDION ─────────────────────────────────────────
+function toggleCard(id){
+  const body=document.getElementById('body-'+id);
+  const chev=document.getElementById('chev-'+id);
+  const open=body.classList.contains('open');
+  body.classList.toggle('open',!open);
+  body.style.display=open?'none':'block';
+  chev.classList.toggle('open',!open);
+}
+
+// ── ALL ENTRIES ───────────────────────────────────────
+function renderAllEntries(){
+  const fid=parseInt(document.getElementById('filter-rep').value)||0;
+  const filtered=[...entries].sort((a,b)=>b.id-a.id).filter(e=>!fid||e.repId===fid);
+  if(!filtered.length){document.getElementById('all-entries-list').innerHTML='<div class="empty-state"><i class="ti ti-inbox"></i><p>No entries yet</p></div>';return;}
+  document.getElementById('all-entries-list').innerHTML=filtered.map(e=>{
+    const rep=REPS.find(r=>r.id===e.repId);
+    const demos=[e.virtual?'Virtual':'',e.onsite?'On-site':''].filter(Boolean).join(' + ')||'No demo';
+    return `<div class="entry-row">
+      <div class="rep-avatar-sm" style="background:${rep.bg};color:${rep.color}">${rep.initials}</div>
+      <div class="entry-info"><div class="entry-customer">${e.customer}</div><div class="entry-meta">${rep.name} · ${e.date} · ${e.saletype} · ${fmtMoney(e.revenue)} · ${demos}</div></div>
+      <div class="entry-pts">+${e.pts}</div>
+      <div class="entry-actions">
+        <button class="btn-icon edit" onclick="startEdit(${e.id})" title="Edit"><i class="ti ti-pencil"></i></button>
+        <button class="btn-icon del" onclick="startDelete(${e.id})" title="Delete"><i class="ti ti-trash"></i></button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function startEdit(id){
+  const e=entries.find(en=>en.id===id); if(!e) return;
+  editingId=id;
+  document.getElementById('f-rep').value=e.repId;
+  document.getElementById('f-customer').value=e.customer;
+  document.getElementById('f-revenue').value=e.revenue;
+  document.getElementById('f-saletype').value=e.saletype;
+  document.getElementById('f-virtual').checked=e.virtual;
+  document.getElementById('f-onsite').checked=e.onsite;
+  document.getElementById('pill-virtual').classList.toggle('checked',e.virtual);
+  document.getElementById('pill-onsite').classList.toggle('checked',e.onsite);
+  calcPts();
+  const rep=REPS.find(r=>r.id===e.repId);
+  document.getElementById('editing-banner').classList.add('visible');
+  document.getElementById('editing-desc').textContent=`Editing "${e.customer}" for ${rep.name}`;
+  document.getElementById('submit-btn').classList.add('editing');
+  document.getElementById('submit-btn').innerHTML='<i class="ti ti-check"></i> Save Changes';
+  document.getElementById('cancel-btn').classList.add('visible');
+  showProtectedSection('submit'); window.scrollTo(0,0);
+}
+function cancelEdit(){ editingId=null; resetForm(); }
+function resetForm(){
+  editingId=null;
+  ['f-customer','f-revenue'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('f-saletype').value='0';
+  document.getElementById('f-virtual').checked=false;
+  document.getElementById('f-onsite').checked=false;
+  ['pill-virtual','pill-onsite'].forEach(id=>document.getElementById(id).classList.remove('checked'));
+  document.getElementById('editing-banner').classList.remove('visible');
+  document.getElementById('submit-btn').classList.remove('editing');
+  document.getElementById('submit-btn').innerHTML='<i class="ti ti-check"></i> Submit Entry';
+  document.getElementById('cancel-btn').classList.remove('visible');
+  calcPts();
+}
+function startDelete(id){
+  const e=entries.find(en=>en.id===id); if(!e) return;
+  pendingDelId=id;
+  document.getElementById('del-customer-name').textContent=e.customer;
+  document.getElementById('del-confirm-box').classList.add('visible');
+  document.getElementById('del-confirm-box').scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+function cancelDelete(){ pendingDelId=null; document.getElementById('del-confirm-box').classList.remove('visible'); }
+function confirmDelete(){
+  if(pendingDelId===null) return;
+  const e=entries.find(en=>en.id===pendingDelId);
+  const rep=REPS.find(r=>r.id===e.repId);
+  entries=entries.filter(en=>en.id!==pendingDelId);
+  pendingDelId=null;
+  document.getElementById('del-confirm-box').classList.remove('visible');
+  renderAllEntries();
+  showToast('🗑 Entry deleted',`"${e.customer}" removed — ${rep.name}'s points updated.`,false);
+}
+
+function submitEntry(){
+  const repId=parseInt(document.getElementById('f-rep').value);
+  const customer=document.getElementById('f-customer').value.trim();
+  const revenue=parseFloat(document.getElementById('f-revenue').value)||0;
+  const saletype=document.getElementById('f-saletype').value;
+  const virtual=document.getElementById('f-virtual').checked;
+  const onsite=document.getElementById('f-onsite').checked;
+  if(!customer){showToast('Missing info','Please enter a customer name.',false);return;}
+  if(saletype==='0'){showToast('Missing info','Please select a sale type.',false);return;}
+  const pts=calcPoints(revenue,saletype,virtual,onsite);
+  const rep=REPS.find(r=>r.id===repId);
+  if(editingId!==null){
+    const idx=entries.findIndex(e=>e.id===editingId);
+    if(idx>-1) entries[idx]={...entries[idx],repId,customer,revenue,saletype,virtual,onsite,pts};
+    showToast('✏️ Entry updated',`"${customer}" saved — ${pts} pts for ${rep.name}.`,true);
+    resetForm(); showProtectedSection('entries');
+  } else {
+    const mo=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const now=new Date(); const dateStr=mo[now.getMonth()]+' '+now.getDate();
+    const prevFirst=getRankedReps()[0].rep.id;
+    entries.unshift({id:nextId++,repId,customer,revenue,saletype,virtual,onsite,pts,date:dateStr});
+    if(getRankedReps()[0].rep.id!==prevFirst){fireConfetti();showToast('👑 New Leader!',`${rep.name} just took the lead!`,true);}
+    else showToast('🎯 Entry Logged!',`+${pts} pts for ${rep.name} — "${customer}"`,true);
+    resetForm();
+  }
+}
+function togglePill(pId,cId){ document.getElementById(pId).classList.toggle('checked',document.getElementById(cId).checked); }
+function calcPts(){
+  const rev=parseFloat(document.getElementById('f-revenue').value)||0;
+  const st=document.getElementById('f-saletype').value;
+  const virt=document.getElementById('f-virtual').checked;
+  const onst=document.getElementById('f-onsite').checked;
+  let rp=0;
+  if(rev>0&&rev<=5000) rp=1; else if(rev>5000&&rev<=10000) rp=2; else if(rev>10000&&rev<=25000) rp=3; else if(rev>25000) rp=4;
+  const sp=st==='surgical'?1:st==='clinic'?2:0;
+  const dp=(virt?1:0)+(onst?2:0);
+  document.getElementById('pts-total').textContent=1+rp+sp+dp;
+  document.getElementById('pts-breakdown').textContent=`Base: 1 | Revenue: +${rp} | Sale type: +${sp} | Demo: +${dp}`;
+}
+
+// ── PROFILE ───────────────────────────────────────────
+function showProfile(repId){
+  const rep=REPS.find(r=>r.id===repId); const s=repStats(repId);
+  const ranked=getRankedReps(); const rank=ranked.findIndex(r=>r.rep.id===repId)+1;
+  const lvl=getLevel(s.totalPts); const nextLvl=getNextLevel(s.totalPts);
+  const pct=officePercent(s.totalPts); const bw=barWidth(pct); const over=pct>100;
+  const stage=getOfficeStage(pct); const nextStage=getNextOfficeStage(pct);
+  const badges=BADGES_DEF.map(b=>({...b,unlocked:b.check(s)}));
+  const lvlPct=nextLvl?Math.round(((s.totalPts-lvl.min)/(nextLvl.min-lvl.min))*100):100;
+  const above=rank>1?ranked[rank-2]:null; const below=rank<ranked.length?ranked[rank]:null;
+  const ptsToFirst=rank>1?ranked[0].stats.totalPts-s.totalPts:0;
+  document.getElementById('profile-content').innerHTML=`
+    <div class="profile-header">
+      <div class="profile-avatar" style="background:${rep.bg};color:${rep.color}">${rep.initials}</div>
+      <div style="flex:1;min-width:0">
+        <div class="profile-name">${rep.name}</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px">
+          <span class="tag tag-blue">${lvl.emoji} ${lvl.name}</span>
+          <span class="tag tag-gold">${rankSuffix(rank)} Place</span>
+          <span class="info-pill"><i class="ti ti-building"></i> Office ${pct}%${over?' ✨':''}</span>
+        </div>
+        <div class="level-bar-wrap">
+          <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--k-silver);margin-bottom:4px"><span>${lvl.name}</span><span>${nextLvl?nextLvl.name:'MAX LEVEL'}</span></div>
+          <div class="level-bar-bg"><div class="level-bar-fill" style="width:${lvlPct}%"></div></div>
+          <div class="level-label">${nextLvl?(nextLvl.min-s.totalPts)+' pts until '+nextLvl.name:'Legendary Hunter achieved!'}</div>
+        </div>
+        <div class="profile-stats-grid">
+          <div class="profile-stat"><div class="profile-stat-val" style="color:var(--k-blue2)">${s.totalPts}</div><div class="profile-stat-lbl">Total Points</div></div>
+          <div class="profile-stat"><div class="profile-stat-val">${s.totalAccounts}</div><div class="profile-stat-lbl">New Accounts</div></div>
+          <div class="profile-stat"><div class="profile-stat-val" style="color:var(--k-green)">${fmtMoney(s.totalRevenue)}</div><div class="profile-stat-lbl">Revenue</div></div>
+          <div class="profile-stat"><div class="profile-stat-val">${s.totalAccounts>0?fmtMoney(Math.round(s.totalRevenue/s.totalAccounts)):'$0'}</div><div class="profile-stat-lbl">Avg / Acct</div></div>
+          <div class="profile-stat"><div class="profile-stat-val">${s.surgicalSales}</div><div class="profile-stat-lbl">Surgical</div></div>
+          <div class="profile-stat"><div class="profile-stat-val">${s.clinicSales}</div><div class="profile-stat-lbl">Clinic</div></div>
+          <div class="profile-stat"><div class="profile-stat-val">${s.virtualDemos}</div><div class="profile-stat-lbl">Virtual Demos</div></div>
+          <div class="profile-stat"><div class="profile-stat-val">${s.onsiteDemos}</div><div class="profile-stat-lbl">On-site Demos</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="grid2">
+      <div>
+        <div class="section-header" style="margin-bottom:12px"><div class="section-title" style="font-size:15px"><i class="ti ti-building"></i> Personal Office</div></div>
+        ${buildOfficeHTML(pct,stage)}
+        <div style="margin-top:10px;background:rgba(0,0,0,0.3);border:1px solid var(--k-border);border-radius:10px;padding:12px">
+          <div style="font-size:13px;font-weight:600;color:var(--k-white);margin-bottom:4px">${stage.emoji} ${stage.label}</div>
+          ${over?`<div style="font-size:12px;color:var(--k-blue2)">✨ Office complete at ${pct}% — keep building!</div>`
+            :nextStage?`<div style="font-size:11px;color:var(--k-silver)">Next: ${nextStage.emoji} ${nextStage.label}</div><div style="font-size:11px;color:var(--k-blue2);margin-top:2px">${Math.ceil((nextStage.pct/100*PTS_FOR_100)-s.totalPts)} pts until next upgrade</div>`
+            :`<div style="font-size:11px;color:var(--k-blue2)">🏆 Ultimate office achieved!</div>`}
+          <div class="office-bar" style="margin-top:8px;height:6px;overflow:hidden"><div class="office-fill ${over?'over100':''}" style="width:${bw}%"></div></div>
+          <div style="font-size:10px;color:var(--k-silver);margin-top:4px">${pct}% complete</div>
+        </div>
+      </div>
+      <div>
+        <div class="section-header" style="margin-bottom:12px"><div class="section-title" style="font-size:15px"><i class="ti ti-swords"></i> Competition</div></div>
+        <div class="comp-ribbon">
+          <div class="comp-row"><span class="comp-label">Current Rank</span><span class="comp-val" style="color:var(--k-blue2)">${rankSuffix(rank)}</span></div>
+          ${above?`<div class="comp-row"><span class="comp-label">Ahead (${above.rep.name})</span><span class="comp-val">${above.stats.totalPts-s.totalPts} pts back</span></div>`:'<div class="comp-row"><span class="comp-label">Rank</span><span class="comp-val" style="color:var(--k-blue2)">👑 #1 Leader!</span></div>'}
+          ${below?`<div class="comp-row"><span class="comp-label">Behind (${below.rep.name})</span><span class="comp-val" style="color:var(--k-green)">+${s.totalPts-below.stats.totalPts} pts ahead</span></div>`:''}
+          ${rank>1?`<div class="comp-row"><span class="comp-label">Behind 1st</span><span class="comp-val" style="color:var(--k-red)">${ptsToFirst} pts</span></div>`:''}
+        </div>
+        <div style="margin-top:14px">
+          <div class="section-header" style="margin-bottom:10px"><div class="section-title" style="font-size:15px"><i class="ti ti-calendar"></i> Monthly Points</div></div>
+          ${['July','August','September'].map(m=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:rgba(0,0,0,0.3);border:1px solid var(--k-border);border-radius:8px;margin-bottom:6px"><span style="font-size:13px;color:var(--k-silver)">${m}</span><span style="font-size:16px;font-weight:700;color:${s.monthlyPts[m]>0?'var(--k-blue2)':'var(--k-silver)'}">${s.monthlyPts[m]} pts</span></div>`).join('')}
+        </div>
+      </div>
+    </div>
+    <div style="margin-top:20px">
+      <div class="section-header" style="margin-bottom:12px"><div class="section-title" style="font-size:15px"><i class="ti ti-award"></i> Badge Cabinet</div></div>
+      <div class="badges-grid">${badges.map(b=>`<div class="badge ${b.unlocked?'unlocked':'locked'}"><div class="badge-icon">${b.icon}</div><div><div class="badge-name">${b.name}</div><div class="badge-desc">${b.desc}</div></div></div>`).join('')}</div>
+    </div>
+    <div style="margin-top:20px">
+      <div class="section-header" style="margin-bottom:12px">
+        <div class="section-title" style="font-size:15px"><i class="ti ti-clipboard-list"></i> Account History</div>
+        ${isUnlocked?`<button class="btn-icon edit" style="width:auto;padding:0 12px;font-size:12px;gap:5px;display:flex;align-items:center;" onclick="navToProtected('entries');setTimeout(()=>{document.getElementById('filter-rep').value=${repId};renderAllEntries();},50)"><i class="ti ti-pencil"></i> Edit entries</button>`:''}
+      </div>
+      ${entries.filter(e=>e.repId===repId).map(e=>`<div style="background:rgba(0,0,0,0.3);border:1px solid var(--k-border);border-radius:10px;padding:12px 16px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center"><div><div style="font-size:14px;font-weight:600;color:var(--k-white)">${e.customer}</div><div style="font-size:11px;color:var(--k-silver);margin-top:2px">${e.date} · ${e.saletype} · ${fmtMoney(e.revenue)} · ${[e.virtual?'Virtual':'',e.onsite?'On-site':''].filter(Boolean).join(' + ')||'No demo'}</div></div><div style="text-align:right"><div style="font-size:20px;font-weight:800;color:var(--k-blue2)">${e.pts}</div><div style="font-size:10px;color:var(--k-silver)">pts</div></div></div>`).join('')||'<div class="empty-state"><i class="ti ti-inbox"></i><p>No entries yet</p></div>'}
+    </div>`;
+  setTimeout(()=>document.querySelectorAll('.office-element').forEach((el,i)=>setTimeout(()=>el.classList.add('visible'),i*120)),100);
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.getElementById('section-profile').classList.add('active');
+}
+
+function buildOfficeHTML(pct,stage){
+  const positions=[{bottom:'32%',left:'15%'},{bottom:'32%',left:'42%'},{bottom:'32%',right:'15%'},{bottom:'55%',left:'30%'}];
+  const items=stage.elements.map((e,i)=>{const p=positions[i]||positions[0];return`<div class="office-element" style="font-size:36px;${Object.entries(p).map(([k,v])=>`${k}:${v}`).join(';')}">${e}</div>`;}).join('');
+  return`<div class="office-scene"><div class="office-wall"></div>${pct>=30?'<div style="position:absolute;top:15%;right:10%;width:22%;aspect-ratio:1;border:2px solid rgba(43,127,212,0.35);border-radius:4px;background:rgba(43,127,212,0.08)"></div>':''}<div class="office-floor"></div>${items}${pct>=100?'<div style="position:absolute;top:12%;left:50%;transform:translateX(-50%);font-size:28px;filter:drop-shadow(0 0 8px rgba(43,127,212,0.8))">🏆</div>':''}</div>`;
+}
+
+// ── MONTHLY ───────────────────────────────────────────
+function renderMonthly(){
+  const ranked=getRankedReps(); const months=['July','August','September'];
+  const winners=months.map(m=>{const best=ranked.map(r=>({rep:r.rep,pts:r.stats.monthlyPts[m]})).sort((a,b)=>b.pts-a.pts)[0];return{month:m,winner:best.pts>0?best.rep:null,pts:best.pts};});
+  document.getElementById('monthly-cards').innerHTML=winners.map((mw,i)=>`<div class="monthly-card ${mw.winner&&i===0?'champion':''}"><div class="monthly-trophy">${i===2?'👑':'🏆'}</div><div class="monthly-month">${mw.month} ${i<2?'Champion':'Cup Champion'}</div>${mw.winner&&mw.pts>0?`<div class="monthly-winner">${mw.winner.name}</div><div class="monthly-pts">${mw.pts} pts this month</div>`:`<div class="monthly-winner" style="color:var(--k-silver);font-size:14px">${i===0?'In Progress...':'Pending'}</div>`}</div>`).join('');
+  const mc=document.getElementById('monthly-chart'); if(mc._ci) mc._ci.destroy();
+  mc._ci=new Chart(mc,{type:'bar',data:{labels:REPS.map(r=>r.name.split(' ')[0]),datasets:months.map((m,i)=>({label:m,data:REPS.map(r=>repStats(r.id).monthlyPts[m]),backgroundColor:['rgba(43,127,212,0.75)','rgba(74,159,232,0.65)','rgba(123,191,240,0.55)'][i],borderRadius:4,borderSkipped:false}))},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#8ea8c3',font:{size:11}}}},scales:{x:{ticks:{color:'#8ea8c3',font:{size:11}},grid:{color:'rgba(255,255,255,0.04)'}},y:{ticks:{color:'#8ea8c3',font:{size:11}},grid:{color:'rgba(255,255,255,0.04)'}}}}});
+  const oc=document.getElementById('overall-chart'); if(oc._ci) oc._ci.destroy();
+  oc._ci=new Chart(oc,{type:'bar',data:{labels:ranked.map(r=>r.rep.name.split(' ')[0]),datasets:[{label:'Total Points',data:ranked.map(r=>r.stats.totalPts),backgroundColor:ranked.map(r=>r.rep.color+'bb'),borderColor:ranked.map(r=>r.rep.color),borderWidth:1,borderRadius:6,borderSkipped:false}]},options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#8ea8c3',font:{size:11}},grid:{color:'rgba(255,255,255,0.04)'}},y:{ticks:{color:'#8ea8c3',font:{size:12}},grid:{display:false}}}}});
+}
+
+// ── TOAST & CONFETTI ──────────────────────────────────
+let toastTimer;
+function showToast(title,body,good){const t=document.getElementById('toast');document.getElementById('toast-title').textContent=title;document.getElementById('toast-body').textContent=body;t.style.borderColor=good?'var(--k-blue)':'rgba(239,68,68,0.5)';t.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove('show'),3500);}
+function fireConfetti(){const cols=['#2b7fd4','#4a9fe8','#7bbff0','#ffffff','#22c55e','#f59e0b'];for(let i=0;i<60;i++){setTimeout(()=>{const el=document.createElement('div');el.className='confetti-piece';el.style.cssText=`left:${Math.random()*100}vw;top:-10px;background:${cols[Math.floor(Math.random()*cols.length)]};width:${6+Math.random()*6}px;height:${6+Math.random()*6}px;animation-duration:${2+Math.random()*2}s;animation-delay:${Math.random()*0.5}s`;document.body.appendChild(el);setTimeout(()=>el.remove(),4000);},i*30);}}
+
+// ── INIT ──────────────────────────────────────────────
+window.addEventListener('load',()=>{
+  document.getElementById('f-rep').innerHTML=REPS.map(r=>`<option value="${r.id}">${r.name}</option>`).join('');
+  document.getElementById('filter-rep').innerHTML='<option value="0">All reps</option>'+REPS.map(r=>`<option value="${r.id}">${r.name}</option>`).join('');
+  renderLeaderboard();
+  document.getElementById('f-revenue').addEventListener('input',calcPts);
+  document.getElementById('f-saletype').addEventListener('change',calcPts);
+  calcPts();
+});
+</script>
+</body>
+</html>
