@@ -294,7 +294,7 @@
   .cover-grid{position:absolute;inset:0;background-image:linear-gradient(rgba(43,127,212,0.04) 1px,transparent 1px),linear-gradient(90deg,rgba(43,127,212,0.04) 1px,transparent 1px);background-size:60px 60px;pointer-events:none;}
   .cover-content{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;text-align:center;padding:40px 24px;max-width:700px;width:100%;animation:coverIn 1.1s ease forwards;}
   @keyframes coverIn{from{opacity:0;transform:translateY(28px);}to{opacity:1;transform:translateY(0);}}
-  .cover-eyebrow{font-size:11px;letter-spacing:4px;text-transform:uppercase;color:var(--k-blue2);font-weight:600;margin-bottom:18px;}
+  .cover-eyebrow{font-size:16px;letter-spacing:3px;text-transform:uppercase;color:var(--k-blue2);font-weight:700;margin-bottom:18px;}
   .cover-logo-text{font-size:clamp(56px,9vw,96px);font-weight:900;letter-spacing:-3px;line-height:0.92;color:var(--k-white);margin-bottom:6px;}
   .cover-logo-text span{background:linear-gradient(135deg,var(--k-blue2),var(--k-blue3));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
   .cover-tagline-main{font-size:clamp(13px,2.2vw,18px);color:var(--k-silver);font-style:italic;margin-bottom:10px;letter-spacing:0.3px;}
@@ -335,17 +335,20 @@
         <div class="cover-prize">
           <div class="cover-prize-icon">🏅</div>
           <div class="cover-prize-label">July Champion</div>
-          <div class="cover-prize-name">Mini Prize</div>
+          <div class="cover-prize-name">$250</div>
+          <div style="font-size:10px;color:var(--k-silver);margin-top:2px">Mini Prize</div>
         </div>
         <div class="cover-prize">
           <div class="cover-prize-icon">🏅</div>
           <div class="cover-prize-label">August Champion</div>
-          <div class="cover-prize-name">Mini Prize</div>
+          <div class="cover-prize-name">$250</div>
+          <div style="font-size:10px;color:var(--k-silver);margin-top:2px">Mini Prize</div>
         </div>
         <div class="cover-prize grand">
           <div class="cover-prize-icon">👑</div>
           <div class="cover-prize-label">Q3 Champion</div>
-          <div class="cover-prize-name">Grand Prize</div>
+          <div class="cover-prize-name">$1,500</div>
+          <div style="font-size:10px;color:var(--k-gold2);margin-top:2px">Grand Prize</div>
         </div>
       </div>
       <div class="cover-meta">
@@ -550,20 +553,20 @@
             <div class="prize-card">
               <div class="prize-emoji">🏅</div>
               <div class="prize-label">July Champion</div>
-              <div class="prize-name">Mini Prize</div>
-              <div class="prize-detail">Top hunter points in July</div>
+              <div class="prize-name">$250</div>
+              <div class="prize-detail">Mini Prize · Top points in July</div>
             </div>
             <div class="prize-card">
               <div class="prize-emoji">🏅</div>
               <div class="prize-label">August Champion</div>
-              <div class="prize-name">Mini Prize</div>
-              <div class="prize-detail">Top hunter points in August</div>
+              <div class="prize-name">$250</div>
+              <div class="prize-detail">Mini Prize · Top points in August</div>
             </div>
             <div class="prize-card grand">
               <div class="prize-emoji">👑</div>
               <div class="prize-label">Q3 Overall Champion</div>
-              <div class="prize-name">Grand Prize</div>
-              <div class="prize-detail">Most total points July–September</div>
+              <div class="prize-name">$1,500</div>
+              <div class="prize-detail">Grand Prize · Most total points July–September</div>
             </div>
           </div>
           <div class="rules-alert" style="margin-top:14px">
@@ -806,14 +809,14 @@ const OFFICE_STAGES = [
 const PTS_FOR_100 = 30;
 let nextId = 100;
 
-// Live data store — Firebase module writes to window.entries
-// The bare name `entries` in every function below resolves to window.entries
-// because this is a classic (non-module) script on the global scope.
+// Firebase module writes live data here via window.entries.
+// Using var (not let) so it becomes window.entries automatically
+// in this classic script — every function that reads `entries`
+// will see the live Firestore data without any other changes.
 var entries = [];
 
 let editingId = null;
 let pendingDelId = null;
-// Bridge mutable state to window so the ES module can read/write them
 Object.defineProperty(window, 'editingId',   { get:()=>editingId,   set:v=>{ editingId=v; },   configurable:true });
 Object.defineProperty(window, 'pendingDelId', { get:()=>pendingDelId, set:v=>{ pendingDelId=v; }, configurable:true });
 
@@ -918,6 +921,29 @@ function getRankedReps(){
   return REPS.map(r=>({rep:r,stats:repStats(r.id)})).sort((a,b)=>b.stats.totalPts-a.stats.totalPts).map((item,i)=>{item.rank=i+1;if(i===0)item.stats._isFirst=true;return item;});
 }
 
+// ── CONTEST WEEK / MONTH HELPERS ─────────────────────────
+function getContestWeek() {
+  // Contest starts July 1, 2026. Week 1 = Jul 1–Jul 6.
+  // Week number advances every Monday.
+  const start = new Date('2026-07-01T00:00:00');
+  const now   = new Date();
+  if (now < start) return 1;
+  const end = new Date('2026-10-01T00:00:00');
+  if (now >= end) return 13;
+  const msSinceStart = now - start;
+  const daysSinceStart = Math.floor(msSinceStart / (1000 * 60 * 60 * 24));
+  return Math.min(13, Math.floor(daysSinceStart / 7) + 1);
+}
+function getContestMonth() {
+  const now = new Date();
+  const m = now.getMonth(); // 0-indexed
+  if (m === 6) return 'July';
+  if (m === 7) return 'August';
+  if (m === 8) return 'September';
+  if (now < new Date('2026-07-01')) return 'July';
+  return 'September';
+}
+
 // ── LEADERBOARD ───────────────────────────────────────
 function renderLeaderboard(){
   const ranked=getRankedReps();
@@ -929,7 +955,7 @@ function renderLeaderboard(){
     <div class="stat-card"><div class="stat-label">New Accounts Won</div><div class="stat-value">${totAcct}</div></div>
     <div class="stat-card"><div class="stat-label">Total New Revenue</div><div class="stat-value" style="font-size:20px;padding-top:4px">${fmtMoney(totRev)}</div></div>
     <div class="stat-card"><div class="stat-label">Active Hunters</div><div class="stat-value">${REPS.length}</div></div>
-    <div class="stat-card"><div class="stat-label">Contest Progress</div><div class="stat-value">July</div><div style="font-size:10px;color:var(--k-green);margin-top:4px">Week 4 of 13</div></div>`;
+    <div class="stat-card"><div class="stat-label">Contest Progress</div><div class="stat-value">${getContestMonth()}</div><div style="font-size:10px;color:var(--k-green);margin-top:4px">Week ${getContestWeek()} of 13</div></div>`;
   const medals=['🥇','🥈','🥉'];
   document.getElementById('leaderboard-list').innerHTML=ranked.map((item,i)=>{
     const s=item.stats; const lvl=getLevel(s.totalPts);
@@ -1180,7 +1206,25 @@ function buildOfficeHTML(pct,stage){
 function renderMonthly(){
   const ranked=getRankedReps(); const months=['July','August','September'];
   const winners=months.map(m=>{const best=ranked.map(r=>({rep:r.rep,pts:r.stats.monthlyPts[m]})).sort((a,b)=>b.pts-a.pts)[0];return{month:m,winner:best.pts>0?best.rep:null,pts:best.pts};});
-  document.getElementById('monthly-cards').innerHTML=winners.map((mw,i)=>`<div class="monthly-card ${mw.winner&&i===0?'champion':''}"><div class="monthly-trophy">${i===2?'👑':'🏆'}</div><div class="monthly-month">${mw.month} ${i<2?'Champion':'Cup Champion'}</div>${mw.winner&&mw.pts>0?`<div class="monthly-winner">${mw.winner.name}</div><div class="monthly-pts">${mw.pts} pts this month</div>`:`<div class="monthly-winner" style="color:var(--k-silver);font-size:14px">${i===0?'In Progress...':'Pending'}</div>`}</div>`).join('');
+  const now = new Date();
+  const sepOver = now >= new Date('2026-10-01T00:00:00');
+  const julOver = now >= new Date('2026-08-01T00:00:00');
+  const augOver = now >= new Date('2026-09-01T00:00:00');
+  document.getElementById('monthly-cards').innerHTML=winners.map((mw,i)=>{
+    const isOver = i===0?julOver : i===1?augOver : sepOver;
+    const label  = i===2 ? "The Hunter's Cup Champion" : mw.month+' Champion';
+    const trophy = i===2 ? '👑' : '🏆';
+    const prize  = i===0 ? '$250 Mini Prize' : i===1 ? '$250 Mini Prize' : '$1,500 Grand Prize';
+    let inner;
+    if (!isOver) {
+      inner = `<div class="monthly-winner" style="color:var(--k-silver);font-size:14px">${i===0?'In Progress...':'Pending'}</div><div class="monthly-pts" style="color:var(--k-silver)">${prize}</div>`;
+    } else if (mw.winner && mw.pts > 0) {
+      inner = `<div class="monthly-winner">${mw.winner.name}</div><div class="monthly-pts">${mw.pts} pts · ${prize}</div>`;
+    } else {
+      inner = `<div class="monthly-winner" style="color:var(--k-silver);font-size:14px">Pending</div><div class="monthly-pts" style="color:var(--k-silver)">${prize}</div>`;
+    }
+    return `<div class="monthly-card ${isOver&&i===0?'champion':''}"><div class="monthly-trophy">${trophy}</div><div class="monthly-month">${label}</div>${inner}</div>`;
+  }).join('');
   const mc=document.getElementById('monthly-chart'); if(mc._ci) mc._ci.destroy();
   mc._ci=new Chart(mc,{type:'bar',data:{labels:REPS.map(r=>r.name.split(' ')[0]),datasets:months.map((m,i)=>({label:m,data:REPS.map(r=>repStats(r.id).monthlyPts[m]),backgroundColor:['rgba(43,127,212,0.75)','rgba(74,159,232,0.65)','rgba(123,191,240,0.55)'][i],borderRadius:4,borderSkipped:false}))},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#8ea8c3',font:{size:11}}}},scales:{x:{ticks:{color:'#8ea8c3',font:{size:11}},grid:{color:'rgba(255,255,255,0.04)'}},y:{ticks:{color:'#8ea8c3',font:{size:11}},grid:{color:'rgba(255,255,255,0.04)'}}}}});
   const oc=document.getElementById('overall-chart'); if(oc._ci) oc._ci.destroy();
@@ -1199,7 +1243,6 @@ window.addEventListener('load', () => {
   document.getElementById('f-revenue').addEventListener('input', calcPts);
   document.getElementById('f-saletype').addEventListener('change', calcPts);
   calcPts();
-  // Show loading state until Firebase delivers first snapshot
   document.getElementById('leaderboard-list').innerHTML = '<div style="text-align:center;padding:48px;color:var(--k-silver)"><i class="ti ti-loader" style="font-size:32px;display:block;margin-bottom:12px"></i>Loading live data...</div>';
 });
 
@@ -1218,7 +1261,7 @@ window.resetForm            = resetForm;
 window.cancelEdit           = cancelEdit;
 </script>
 
-<!-- Firebase real-time integration -->
+<!-- Firebase real-time sync -->
 <script type="module">
 import { initializeApp }  from 'https://www.gstatic.com/firebasejs/12.15.0/firebase-app.js';
 import { getAnalytics }   from 'https://www.gstatic.com/firebasejs/12.15.0/firebase-analytics.js';
@@ -1243,16 +1286,11 @@ const db         = getFirestore(app);
 const entriesCol = collection(db, 'entries');
 const lbCol      = collection(db, 'leaderboard');
 
-// KEY FIX: this is the single source of truth.
-// window.entries points to this array. Every function in the main script
-// uses `entries` which resolves to window.entries on the global scope.
-// So when we update window.entries here, repStats(), renderLeaderboard(),
-// renderAllEntries(), showProfile() etc. all instantly see the new data.
 let prevLeaderId = null;
 const q = query(entriesCol, orderBy('createdAt', 'asc'));
 
 onSnapshot(q, (snapshot) => {
-  // Overwrite window.entries with fresh Firestore data
+  // Overwrite window.entries (= the global var entries) with live Firestore data
   window.entries = snapshot.docs.map(d => {
     const data = d.data();
     return {
@@ -1268,21 +1306,14 @@ onSnapshot(q, (snapshot) => {
       date:     data.date     || '',
     };
   });
-
-  // Re-render leaderboard with live data
   window.renderLeaderboard();
-
-  // Confetti when leader changes
   const ranked = window.getRankedReps();
   const newLeaderId = ranked[0] ? ranked[0].rep.id : null;
   if (prevLeaderId !== null && newLeaderId !== prevLeaderId) {
     window.fireConfetti();
-    const leaderName = ranked[0] ? ranked[0].rep.name : '';
-    window.showToast('New Leader!', leaderName + ' just took the lead!', true);
+    window.showToast('New Leader!', (ranked[0] ? ranked[0].rep.name : '') + ' just took the lead!', true);
   }
   prevLeaderId = newLeaderId;
-
-  // Keep leaderboard collection in sync for external reads
   ranked.forEach(function(item) {
     setDoc(doc(lbCol, String(item.rep.id)), {
       repId: item.rep.id, name: item.rep.name,
@@ -1292,18 +1323,14 @@ onSnapshot(q, (snapshot) => {
       updatedAt: serverTimestamp(),
     }, { merge: true }).catch(function() {});
   });
-
-  // Refresh admin panels if open
   const active = document.querySelector('.section.active');
   if (active && active.id === 'section-monthly') window.renderMonthly();
   if (active && active.id === 'section-entries') window.renderAllEntries();
-
 }, function(err) {
   console.error('Firestore error:', err);
   window.showToast('Connection issue', 'Could not reach the database.', false);
 });
 
-// submitEntry: add new doc or update existing doc in Firestore
 window.submitEntry = async function () {
   const repId    = parseInt(document.getElementById('f-rep').value);
   const customer = document.getElementById('f-customer').value.trim();
@@ -1323,8 +1350,7 @@ window.submitEntry = async function () {
       const existing = window.entries.find(function(e) { return e.firestoreId === editId || e.id === editId; });
       if (!existing) { window.showToast('Error', 'Entry not found.', false); return; }
       await updateDoc(doc(db, 'entries', String(existing.firestoreId)), {
-        repId, customer, revenue, saletype, virtual, onsite, pts,
-        updatedAt: serverTimestamp(),
+        repId, customer, revenue, saletype, virtual, onsite, pts, updatedAt: serverTimestamp(),
       });
       window.showToast('Entry updated', '"' + customer + '" saved - ' + pts + ' pts for ' + rep.name + '.', true);
       window.resetForm();
@@ -1343,7 +1369,6 @@ window.submitEntry = async function () {
   }
 };
 
-// confirmDelete: remove doc from Firestore
 window.confirmDelete = async function () {
   const delId = window.pendingDelId;
   if (delId === null) return;
@@ -1354,14 +1379,13 @@ window.confirmDelete = async function () {
     await deleteDoc(doc(db, 'entries', String(e.firestoreId)));
     window.pendingDelId = null;
     document.getElementById('del-confirm-box').classList.remove('visible');
-    window.showToast('Entry deleted', '"' + e.customer + '" removed - ' + (rep ? rep.name : '') + "'s points updated.", false);
+    window.showToast('Entry deleted', '"' + e.customer + '" removed.', false);
   } catch (err) {
     console.error('delete error:', err);
     window.showToast('Delete failed', err.message, false);
   }
 };
 
-// startEdit: fill the form with the chosen entry's data
 window.startEdit = function (id) {
   const e = window.entries.find(function(en) { return en.id === id || en.firestoreId === id; });
   if (!e) return;
@@ -1385,7 +1409,6 @@ window.startEdit = function (id) {
   window.scrollTo(0, 0);
 };
 
-// startDelete: find entry in live array and show confirm
 window.startDelete = function (id) {
   const e = window.entries.find(function(en) { return en.id === id || en.firestoreId === id; });
   if (!e) return;
@@ -1395,7 +1418,6 @@ window.startDelete = function (id) {
   document.getElementById('del-confirm-box').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 };
 
-// Live green pulse dot
 (function() {
   const badge = document.querySelector('.contest-badge');
   if (!badge) return;
