@@ -819,6 +819,9 @@ let entries = [
 
 let editingId = null;
 let pendingDelId = null;
+// Bridge local vars to window so the Firebase ES module can read/write them
+Object.defineProperty(window, 'editingId',   { get:()=>editingId,   set:v=>{ editingId=v; } });
+Object.defineProperty(window, 'pendingDelId', { get:()=>pendingDelId, set:v=>{ pendingDelId=v; } });
 
 // ── PASSWORD ──────────────────────────────────────────
 function openModal(target) {
@@ -1199,11 +1202,219 @@ function fireConfetti(){const cols=['#2b7fd4','#4a9fe8','#7bbff0','#ffffff','#22
 window.addEventListener('load',()=>{
   document.getElementById('f-rep').innerHTML=REPS.map(r=>`<option value="${r.id}">${r.name}</option>`).join('');
   document.getElementById('filter-rep').innerHTML='<option value="0">All reps</option>'+REPS.map(r=>`<option value="${r.id}">${r.name}</option>`).join('');
-  renderLeaderboard();
+  // Firebase onSnapshot drives leaderboard — no manual renderLeaderboard() needed
   document.getElementById('f-revenue').addEventListener('input',calcPts);
   document.getElementById('f-saletype').addEventListener('change',calcPts);
   calcPts();
 });
+
+// Expose everything the Firebase module needs to call/override
+window.submitEntry      = submitEntry;
+window.confirmDelete    = confirmDelete;
+window.startEdit        = startEdit;
+window.cancelEdit       = cancelEdit;
+window.resetForm        = resetForm;
+window.renderAllEntries = renderAllEntries;
+window.getRankedReps    = getRankedReps;
+window.renderLeaderboard    = renderLeaderboard;
+window.renderMonthly        = renderMonthly;
+window.showToast            = showToast;
+window.calcPoints           = calcPoints;
+window.showProtectedSection = showProtectedSection;
+window.fireConfetti         = fireConfetti;
+window.calcPts              = calcPts;
+window.REPS                 = REPS;
+</script>
+
+<!-- ═══════════════════════════════════════════════════════
+     FIREBASE REAL-TIME — all reads/writes go through here
+═══════════════════════════════════════════════════════ -->
+<script type="module">
+import { initializeApp }   from "https://www.gstatic.com/firebasejs/12.15.0/firebase-app.js";
+import { getAnalytics }    from "https://www.gstatic.com/firebasejs/12.15.0/firebase-analytics.js";
+import {
+  getFirestore, collection, doc,
+  addDoc, setDoc, updateDoc, deleteDoc,
+  onSnapshot, query, orderBy, serverTimestamp
+} from "https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey:            "AIzaSyDS1ZDDNfoLgsPZ3LTYuALQ8qnk04cD7P4",
+  authDomain:        "the-hunter-s-cup.firebaseapp.com",
+  projectId:         "the-hunter-s-cup",
+  storageBucket:     "the-hunter-s-cup.firebasestorage.app",
+  messagingSenderId: "386685492457",
+  appId:             "1:386685492457:web:b695cf027102c6dec52478",
+  measurementId:     "G-G37MBCTD21"
+};
+
+const app        = initializeApp(firebaseConfig);
+const analytics  = getAnalytics(app);
+const db         = getFirestore(app);
+const entriesCol = collection(db, 'entries');
+const lbCol      = collection(db, 'leaderboard');
+
+// ── Bridge: make local `entries` array a live window proxy ──
+let _entries = [];
+Object.defineProperty(window, 'entries', { get:()=>_entries, set:v=>{ _entries=v; } });
+
+// ── Live snapshot ─────────────────────────────────────────
+const q = query(entriesCol, orderBy('createdAt', 'asc'));
+let prevLeaderId = null;
+
+onSnapshot(q, (snapshot) => {
+  _entries = snapshot.docs.map(d => {
+    const data = d.data();
+    return {
+      firestoreId: d.id,
+      id:       data.id       ?? d.id,
+      repId:    data.repId,
+      customer: data.customer,
+      revenue:  data.revenue  ?? 0,
+      saletype: data.saletype ?? 'surgical',
+      virtual:  data.virtual  ?? false,
+      onsite:   data.onsite   ?? false,
+      pts:      data.pts      ?? 0,
+      date:     data.date     ?? '',
+    };
+  });
+
+  // Re-render leaderboard
+  window.renderLeaderboard();
+
+  // Confetti if leader changed
+  const ranked = window.getRankedReps();
+  const newLeaderId = ranked[0]?.rep?.id ?? null;
+  if (prevLeaderId !== null && newLeaderId !== prevLeaderId) {
+    window.fireConfetti();
+    const leaderName = ranked[0]?.rep?.name ?? '';
+    window.showToast('\uD83D\uDC51 New Leader!', `${leaderName} just took the lead!`, true);
+  }
+  prevLeaderId = newLeaderId;
+
+  // Sync leaderboard collection so external tools can read it
+  ranked.forEach(({ rep, stats, rank }) => {
+    setDoc(doc(lbCol, String(rep.id)), {
+      repId: rep.id, name: rep.name,
+      score: stats.totalPts, rank,
+      totalRevenue: stats.totalRevenue,
+      totalAccounts: stats.totalAccounts,
+      updatedAt: serverTimestamp(),
+    }, { merge: true }).catch(() => {});
+  });
+
+  // Refresh visible panels
+  const active = document.querySelector('.section.active');
+  if (active?.id === 'section-monthly') window.renderMonthly();
+  if (active?.id === 'section-entries') window.renderAllEntries();
+
+}, (err) => {
+  console.error('Firestore snapshot error:', err);
+  window.showToast('\u26A0\uFE0F Connection issue', 'Could not reach the database.', false);
+});
+
+// ── submitEntry — writes to Firestore ────────────────────
+window.submitEntry = async function() {
+  const repId    = parseInt(document.getElementById('f-rep').value);
+  const customer = document.getElementById('f-customer').value.trim();
+  const revenue  = parseFloat(document.getElementById('f-revenue').value) || 0;
+  const saletype = document.getElementById('f-saletype').value;
+  const virtual  = document.getElementById('f-virtual').checked;
+  const onsite   = document.getElementById('f-onsite').checked;
+
+  if (!customer) { window.showToast('Missing info', 'Please enter a customer name.', false); return; }
+  if (saletype === '0') { window.showToast('Missing info', 'Please select a sale type.', false); return; }
+
+  const pts = window.calcPoints(revenue, saletype, virtual, onsite);
+  const rep = window.REPS.find(r => r.id === repId);
+  const mo  = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const now = new Date();
+  const dateStr = mo[now.getMonth()] + ' ' + now.getDate();
+
+  try {
+    const editId = window.editingId;
+    if (editId !== null) {
+      const existing = _entries.find(e => e.id === editId || e.firestoreId === editId);
+      if (!existing) { window.showToast('Error', 'Entry not found.', false); return; }
+      await updateDoc(doc(db, 'entries', String(existing.firestoreId)), {
+        repId, customer, revenue, saletype, virtual, onsite, pts,
+        updatedAt: serverTimestamp(),
+      });
+      window.showToast('\u270F\uFE0F Entry updated', `"${customer}" saved — ${pts} pts for ${rep.name}.`, true);
+      window.resetForm();
+      window.showProtectedSection('entries');
+    } else {
+      await addDoc(entriesCol, {
+        id: Date.now(), repId, customer, revenue, saletype, virtual, onsite, pts,
+        date: dateStr, createdAt: serverTimestamp(),
+      });
+      window.showToast('\uD83C\uDFAF Entry Logged!', `+${pts} pts for ${rep.name} — "${customer}"`, true);
+      window.resetForm();
+    }
+  } catch (err) {
+    console.error('submitEntry error:', err);
+    window.showToast('\u274C Save failed', err.message, false);
+  }
+};
+
+// ── confirmDelete — deletes from Firestore ───────────────
+window.confirmDelete = async function() {
+  const delId = window.pendingDelId;
+  if (delId === null) return;
+  const e   = _entries.find(en => en.id === delId || en.firestoreId === delId);
+  const rep = window.REPS.find(r => r.id === e?.repId);
+  if (!e) { window.pendingDelId = null; document.getElementById('del-confirm-box').classList.remove('visible'); return; }
+  try {
+    await deleteDoc(doc(db, 'entries', String(e.firestoreId)));
+    window.pendingDelId = null;
+    document.getElementById('del-confirm-box').classList.remove('visible');
+    window.showToast('\uD83D\uDDD1 Entry deleted', `"${e.customer}" removed — ${rep?.name}'s points updated.`, false);
+  } catch (err) {
+    console.error('delete error:', err);
+    window.showToast('\u274C Delete failed', err.message, false);
+  }
+};
+
+// ── startEdit — resolves Firestore doc id ─────────────────
+window.startEdit = function(id) {
+  const e = _entries.find(en => en.id === id || en.firestoreId === id);
+  if (!e) return;
+  window.editingId = e.firestoreId;
+
+  document.getElementById('f-rep').value      = e.repId;
+  document.getElementById('f-customer').value = e.customer;
+  document.getElementById('f-revenue').value  = e.revenue;
+  document.getElementById('f-saletype').value = e.saletype;
+  document.getElementById('f-virtual').checked = e.virtual;
+  document.getElementById('f-onsite').checked  = e.onsite;
+  document.getElementById('pill-virtual').classList.toggle('checked', e.virtual);
+  document.getElementById('pill-onsite').classList.toggle('checked',  e.onsite);
+  window.calcPts();
+
+  const rep = window.REPS.find(r => r.id === e.repId);
+  document.getElementById('editing-banner').classList.add('visible');
+  document.getElementById('editing-desc').textContent = `Editing "${e.customer}" for ${rep?.name}`;
+  document.getElementById('submit-btn').classList.add('editing');
+  document.getElementById('submit-btn').innerHTML = '<i class="ti ti-pencil"></i> Save Changes';
+  document.getElementById('cancel-btn').classList.add('visible');
+  window.showProtectedSection('submit');
+  window.scrollTo(0, 0);
+};
+
+// ── Live green dot indicator ──────────────────────────────
+(function() {
+  const badge = document.querySelector('.contest-badge');
+  if (!badge) return;
+  const dot = document.createElement('span');
+  dot.style.cssText = 'display:inline-block;width:7px;height:7px;border-radius:50%;background:#22c55e;margin-left:6px;vertical-align:middle;box-shadow:0 0 6px #22c55e;animation:livePulse 1.8s ease-in-out infinite;';
+  dot.title = 'Live data stream active';
+  badge.appendChild(dot);
+  const s = document.createElement('style');
+  s.textContent = '@keyframes livePulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.4;transform:scale(0.7)}}';
+  document.head.appendChild(s);
+})();
+
+console.log('\uD83D\uDD25 Firebase real-time stream connected.');
 </script>
 </body>
 </html>
