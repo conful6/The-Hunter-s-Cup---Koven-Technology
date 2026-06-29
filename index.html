@@ -120,12 +120,12 @@
   .tag-over{background:rgba(74,159,232,0.2);color:var(--k-blue3);border:1px solid rgba(74,159,232,0.4);}
   .info-pill{display:inline-flex;align-items:center;gap:5px;background:rgba(43,127,212,0.15);border:1px solid rgba(43,127,212,0.3);color:var(--k-blue3);font-size:11px;padding:4px 10px;border-radius:20px;}
 
-  /* OFFICE */
-  .office-scene{width:100%;aspect-ratio:16/9;max-height:280px;border-radius:12px;border:1px solid var(--k-border2);background:linear-gradient(180deg,#0d1a2e 0%,#071020 100%);position:relative;overflow:hidden;}
-  .office-wall{position:absolute;top:0;left:0;right:0;bottom:30%;background:linear-gradient(180deg,#0a1628 0%,#0f2040 100%);}
-  .office-floor{position:absolute;bottom:0;left:0;right:0;height:30%;background:linear-gradient(180deg,#132040 0%,#0d1830 100%);border-top:1px solid rgba(43,127,212,0.15);}
-  .office-element{position:absolute;font-size:32px;transition:all 0.5s ease;opacity:0;transform:scale(0.5);}
-  .office-element.visible{opacity:1;transform:scale(1);}
+  /* OFFICE SCENE */
+  .office-scene{width:100%;aspect-ratio:16/9;max-height:320px;border-radius:14px;border:1px solid var(--k-border2);overflow:hidden;position:relative;background:#0a0f1a;box-shadow:0 8px 32px rgba(0,0,0,0.5);}
+  .office-scene svg{width:100%;height:100%;display:block;}
+  /* fade-in for svg groups */
+  .office-layer{opacity:0;transition:opacity 0.7s ease,transform 0.7s ease;transform:translateY(8px);}
+  .office-layer.show{opacity:1;transform:translateY(0);}
 
   /* PROFILE */
   .profile-header{background:var(--k-surface);border:1px solid var(--k-border2);border-radius:16px;padding:24px;margin-bottom:20px;display:flex;gap:20px;align-items:flex-start;}
@@ -783,8 +783,6 @@ const LEVELS = [
   { name:'Legendary Hunter', emoji:'👑', min:40, max:Infinity },
 ];
 
-// Tracks every rep who has ever held #1 rank this session.
-// Persists across re-renders so the badge stays even when leadership changes.
 const topHunterEver = new Set();
 
 const BADGES_DEF = [
@@ -917,17 +915,15 @@ function getNextOfficeStage(pct){ const c=Math.min(pct,100); for(const s of OFFI
 function rankSuffix(r){ return r===1?'1st':r===2?'2nd':r===3?'3rd':r+'th'; }
 function fmtMoney(n){ return '$'+Number(n||0).toLocaleString('en-US'); }
 function getRankedReps(){
-  const ranked = REPS.map(r=>({rep:r,stats:repStats(r.id)})).sort((a,b)=>b.stats.totalPts-a.stats.totalPts).map((item,i)=>{
-    item.rank = i+1;
-    item.stats._isFirst = (i === 0);
-    // Only crown as #1 if they have at least 1 point
-    if (i === 0 && item.stats.totalPts > 0) topHunterEver.add(item.rep.id);
+  const ranked=REPS.map(r=>({rep:r,stats:repStats(r.id)})).sort((a,b)=>b.stats.totalPts-a.stats.totalPts).map((item,i)=>{
+    item.rank=i+1;item.stats._isFirst=(i===0);
+    if(i===0&&item.stats.totalPts>0)topHunterEver.add(item.rep.id);
     return item;
   });
   return ranked;
 }
 
-// ── CONTEST WEEK / MONTH HELPERS ─────────────────────────
+// ── CONTEST WEEK / MONTH ────────────────────────────────
 function getContestWeek(){
   const start=new Date('2026-07-01T00:00:00');const now=new Date();
   if(now<start)return 1;if(now>=new Date('2026-10-01T00:00:00'))return 13;
@@ -1150,7 +1146,7 @@ function showProfile(repId){
     <div class="grid2">
       <div>
         <div class="section-header" style="margin-bottom:12px"><div class="section-title" style="font-size:15px"><i class="ti ti-building"></i> Personal Office</div></div>
-        ${buildOfficeHTML(pct,stage)}
+        ${buildOfficeHTML(pct,stage,rep.id)}
         <div style="margin-top:10px;background:rgba(0,0,0,0.3);border:1px solid var(--k-border);border-radius:10px;padding:12px">
           <div style="font-size:13px;font-weight:600;color:var(--k-white);margin-bottom:4px">${stage.emoji} ${stage.label}</div>
           ${over?`<div style="font-size:12px;color:var(--k-blue2)">✨ Office complete at ${pct}% — keep building!</div>`
@@ -1185,16 +1181,361 @@ function showProfile(repId){
       </div>
       ${entries.filter(e=>e.repId===repId).map(e=>`<div style="background:rgba(0,0,0,0.3);border:1px solid var(--k-border);border-radius:10px;padding:12px 16px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center"><div><div style="font-size:14px;font-weight:600;color:var(--k-white)">${e.customer}</div><div style="font-size:11px;color:var(--k-silver);margin-top:2px">${e.date} · ${e.saletype} · ${fmtMoney(e.revenue)} · ${[e.virtual?'Virtual':'',e.onsite?'On-site':''].filter(Boolean).join(' + ')||'No demo'}</div></div><div style="text-align:right"><div style="font-size:20px;font-weight:800;color:var(--k-blue2)">${e.pts}</div><div style="font-size:10px;color:var(--k-silver)">pts</div></div></div>`).join('')||'<div class="empty-state"><i class="ti ti-inbox"></i><p>No entries yet</p></div>'}
     </div>`;
-  setTimeout(()=>document.querySelectorAll('.office-element').forEach((el,i)=>setTimeout(()=>el.classList.add('visible'),i*120)),100);
+  // SVG office layers animate via CSS transitions on load
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
   document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
   document.getElementById('section-profile').classList.add('active');
 }
 
-function buildOfficeHTML(pct,stage){
-  const positions=[{bottom:'32%',left:'15%'},{bottom:'32%',left:'42%'},{bottom:'32%',right:'15%'},{bottom:'55%',left:'30%'}];
-  const items=stage.elements.map((e,i)=>{const p=positions[i]||positions[0];return`<div class="office-element" style="font-size:36px;${Object.entries(p).map(([k,v])=>`${k}:${v}`).join(';')}">${e}</div>`;}).join('');
-  return`<div class="office-scene"><div class="office-wall"></div>${pct>=30?'<div style="position:absolute;top:15%;right:10%;width:22%;aspect-ratio:1;border:2px solid rgba(43,127,212,0.35);border-radius:4px;background:rgba(43,127,212,0.08)"></div>':''}<div class="office-floor"></div>${items}${pct>=100?'<div style="position:absolute;top:12%;left:50%;transform:translateX(-50%);font-size:28px;filter:drop-shadow(0 0 8px rgba(43,127,212,0.8))">🏆</div>':''}</div>`;
+function buildOfficeHTML(pct, stage, repId) {
+  // Clamp for stage logic but allow display of real pct
+  const c = Math.min(pct, 100);
+  const isFemale = repId === 5; // Dani
+
+  // ── colour palette keyed to progression ──────────────────────
+  const wallColor  = c < 15  ? '#111827' : c < 45 ? '#0f1e35' : c < 75 ? '#0d1c32' : '#0a1628';
+  const wallAccent = c < 15  ? '#1a2035' : c < 45 ? '#162a45' : c < 75 ? '#1a3050' : '#1e3860';
+  const floorColor = c < 15  ? '#0d1117' : c < 45 ? '#0f1a28' : c < 75 ? '#0d1b30' : '#0b1a2e';
+  const carpetColor= c < 30  ? 'none'    : c < 60  ? '#162240' : '#1a2f52';
+  const lightColor = c < 30  ? 'rgba(43,127,212,0.06)' : c < 60 ? 'rgba(43,127,212,0.12)' : 'rgba(43,127,212,0.2)';
+
+  // ── window (unlocked at stage 2 = 30%) ──────────────────────
+  const window_ = c >= 30 ? `
+    <g class="office-layer show">
+      <rect x="62" y="14" width="18" height="22" rx="1.5" fill="#0d2040" stroke="#2b5d9e" stroke-width="0.8"/>
+      <line x1="71" y1="14" x2="71" y2="36" stroke="#2b5d9e" stroke-width="0.4"/>
+      <line x1="62" y1="25" x2="80" y2="25" stroke="#2b5d9e" stroke-width="0.4"/>
+      <rect x="62" y="14" width="18" height="22" rx="1.5" fill="url(#winGlow)" opacity="0.5"/>
+      <text x="71" y="11" text-anchor="middle" font-size="3.5" fill="#4a9fe8" opacity="0.7">🌆</text>
+    </g>` : '';
+
+  // ── wall art / branding (stage 3 = 45%+) ────────────────────
+  const wallArt = c >= 45 ? `
+    <g class="office-layer show">
+      <rect x="15" y="16" width="12" height="10" rx="1" fill="#0d2040" stroke="#2b5d9e" stroke-width="0.6"/>
+      <text x="21" y="23.5" text-anchor="middle" font-size="5">📊</text>
+      <rect x="29" y="15" width="8" height="12" rx="1" fill="#0d2040" stroke="#4a9fe8" stroke-width="0.5"/>
+      <text x="33" y="23" text-anchor="middle" font-size="5">🏆</text>
+    </g>` : '';
+
+  // ── overhead light fixture ───────────────────────────────────
+  const lightFix = c >= 15 ? `
+    <g class="office-layer show">
+      <line x1="50" y1="6" x2="50" y2="12" stroke="#334" stroke-width="0.5"/>
+      <ellipse cx="50" cy="12" rx="12" ry="2.5" fill="#1a2540" stroke="#2b5d9e" stroke-width="0.5"/>
+      <ellipse cx="50" cy="13" rx="10" ry="2" fill="${c>=60?'#1e4080':'#152035'}" opacity="0.9"/>
+    </g>` : `
+    <g>
+      <rect x="30" y="8" width="5" height="3" rx="0.5" fill="#1a1f2e" opacity="0.4"/>
+      <rect x="65" y="8" width="5" height="3" rx="0.5" fill="#1a1f2e" opacity="0.4"/>
+    </g>`;
+
+  // ── desk (stage 1 = 15%+) ───────────────────────────────────
+  const desk = c >= 15 ? `
+    <g class="office-layer show">
+      ${c >= 60
+        ? `<!-- Executive L-shaped desk -->
+           <rect x="26" y="52" width="52" height="7" rx="1" fill="#1e3a5f" stroke="#2b5d9e" stroke-width="0.5"/>
+           <rect x="26" y="52" width="16" height="12" rx="1" fill="#1e3a5f" stroke="#2b5d9e" stroke-width="0.5"/>
+           <!-- desk legs -->
+           <rect x="27" y="59" width="2" height="6" rx="0.5" fill="#152840"/>
+           <rect x="75" y="59" width="2" height="6" rx="0.5" fill="#152840"/>
+           <rect x="27" y="64" width="2" height="3" rx="0.5" fill="#152840"/>
+           <rect x="40" y="64" width="2" height="3" rx="0.5" fill="#152840"/>`
+        : `<!-- Standard desk -->
+           <rect x="28" y="54" width="44" height="6" rx="1" fill="#162a45" stroke="#2b5d9e" stroke-width="0.5"/>
+           <rect x="29" y="60" width="2" height="6" rx="0.5" fill="#0f1e30"/>
+           <rect x="69" y="60" width="2" height="6" rx="0.5" fill="#0f1e30"/>`}
+    </g>` : '';
+
+  // ── chair ────────────────────────────────────────────────────
+  const chair = c >= 15 ? `
+    <g class="office-layer show">
+      ${c >= 60
+        ? `<!-- High-back executive chair -->
+           <rect x="45" y="44" width="10" height="14" rx="2" fill="#0d1e35" stroke="#2b7fd4" stroke-width="0.7"/>
+           <rect x="44" y="57" width="12" height="3" rx="1.5" fill="#0d1e35" stroke="#2b7fd4" stroke-width="0.5"/>
+           <circle cx="50" cy="62" r="2" fill="#0a1525"/>
+           <line x1="48" y1="64" x2="46" y2="67" stroke="#0a1525" stroke-width="1.2" stroke-linecap="round"/>
+           <line x1="52" y1="64" x2="54" y2="67" stroke="#0a1525" stroke-width="1.2" stroke-linecap="round"/>
+           <!-- armrests -->
+           <rect x="43" y="53" width="2" height="6" rx="1" fill="#0d1e35" stroke="#2b7fd4" stroke-width="0.4"/>
+           <rect x="55" y="53" width="2" height="6" rx="1" fill="#0d1e35" stroke="#2b7fd4" stroke-width="0.4"/>`
+        : `<!-- Basic chair -->
+           <rect x="45" y="46" width="10" height="11" rx="2" fill="#0d1a2e" stroke="#2b5d9e" stroke-width="0.6"/>
+           <rect x="44" y="56" width="12" height="3" rx="1.5" fill="#0d1a2e" stroke="#2b5d9e" stroke-width="0.5"/>
+           <circle cx="50" cy="61" r="1.5" fill="#08111e"/>
+           <line x1="48" y1="62" x2="46" y2="66" stroke="#08111e" stroke-width="1" stroke-linecap="round"/>
+           <line x1="52" y1="62" x2="54" y2="66" stroke="#08111e" stroke-width="1" stroke-linecap="round"/>`}
+    </g>` : '';
+
+  // ── computer monitor (stage 2 = 30%+) ───────────────────────
+  const monitor = c >= 30 ? `
+    <g class="office-layer show">
+      <!-- main monitor -->
+      <rect x="35" y="43" width="18" height="12" rx="1.2" fill="#060d18" stroke="#2b7fd4" stroke-width="0.7"/>
+      <rect x="36" y="44" width="16" height="10" rx="0.8" fill="#0a1f3a"/>
+      <!-- screen glow content -->
+      <rect x="37" y="45" width="14" height="7" rx="0.5" fill="#0d2545" opacity="0.9"/>
+      <line x1="38" y1="47" x2="49" y2="47" stroke="#2b7fd4" stroke-width="0.5" opacity="0.6"/>
+      <line x1="38" y1="49" x2="47" y2="49" stroke="#4a9fe8" stroke-width="0.4" opacity="0.5"/>
+      <line x1="38" y1="51" x2="44" y2="51" stroke="#4a9fe8" stroke-width="0.4" opacity="0.4"/>
+      <rect x="43" y="54.5" width="2" height="1.5" rx="0.3" fill="#1e3a5f"/>
+      <rect x="40" y="55.5" width="8" height="1" rx="0.3" fill="#1a2f4a"/>
+      ${c >= 60 ? `<!-- second monitor -->
+      <rect x="55" y="43" width="14" height="10" rx="1" fill="#060d18" stroke="#2b7fd4" stroke-width="0.6"/>
+      <rect x="56" y="44" width="12" height="8" rx="0.6" fill="#0a2040"/>
+      <rect x="57" y="45" width="10" height="6" rx="0.4" fill="#0d2a50" opacity="0.9"/>
+      <line x1="58" y1="47" x2="66" y2="47" stroke="#2b7fd4" stroke-width="0.4" opacity="0.5"/>
+      <line x1="58" y1="49" x2="64" y2="49" stroke="#4a9fe8" stroke-width="0.4" opacity="0.4"/>
+      <rect x="61" y="53.5" width="2" height="1.5" rx="0.3" fill="#1e3a5f"/>
+      <rect x="58" y="54.5" width="6" height="1" rx="0.3" fill="#1a2f4a"/>` : ''}
+      <!-- keyboard -->
+      <rect x="36" y="56.5" width="13" height="2.5" rx="0.8" fill="#0a1525" stroke="#1e3050" stroke-width="0.4"/>
+      <!-- phone -->
+      <rect x="65" y="52" width="6" height="5" rx="0.8" fill="#0a1525" stroke="#1e3050" stroke-width="0.4"/>
+      <rect x="66" y="53" width="4" height="2.5" rx="0.3" fill="#0d2040"/>
+    </g>` : '';
+
+  // ── plant (stage 4 = 60%+) ───────────────────────────────────
+  const plant = c >= 60 ? `
+    <g class="office-layer show">
+      <rect x="15" y="58" width="5" height="7" rx="0.8" fill="#1a2f3a" stroke="#1e4040" stroke-width="0.5"/>
+      <ellipse cx="17.5" cy="57" rx="4" ry="3" fill="#0d3020"/>
+      <text x="17.5" y="58" text-anchor="middle" font-size="6">🪴</text>
+    </g>` : '';
+
+  // ── conference table (stage 5 = 75%+) ───────────────────────
+  const confTable = c >= 75 ? `
+    <g class="office-layer show">
+      <ellipse cx="15" cy="60" rx="9" ry="5" fill="#162a40" stroke="#2b5d9e" stroke-width="0.6"/>
+      <!-- mini chairs around table -->
+      <rect x="7" y="57" width="4" height="3" rx="0.8" fill="#0d1e2e" stroke="#1e3050" stroke-width="0.4"/>
+      <rect x="12" y="54" width="4" height="3" rx="0.8" fill="#0d1e2e" stroke="#1e3050" stroke-width="0.4"/>
+      <rect x="7" y="62" width="4" height="3" rx="0.8" fill="#0d1e2e" stroke="#1e3050" stroke-width="0.4"/>
+    </g>` : '';
+
+  // ── Hunter's Cup trophy (stage 6 = 100%) ─────────────────────
+  const trophy = c >= 100 ? `
+    <g class="office-layer show">
+      <text x="84" y="47" text-anchor="middle" font-size="10"
+            style="filter:drop-shadow(0 0 4px gold)">🏆</text>
+      <rect x="80" y="47" width="8" height="1" rx="0.3" fill="#2b5d9e" opacity="0.6"/>
+    </g>` : '';
+
+  // ── Moving boxes (stage 0 only) ──────────────────────────────
+  const boxes = c < 15 ? `
+    <g class="office-layer show">
+      <rect x="25" y="55" width="14" height="12" rx="1.5" fill="#1a2030" stroke="#2a3550" stroke-width="0.7"/>
+      <line x1="25" y1="61" x2="39" y2="61" stroke="#2a3550" stroke-width="0.5"/>
+      <line x1="32" y1="55" x2="32" y2="67" stroke="#2a3550" stroke-width="0.5"/>
+      <text x="32" y="63" text-anchor="middle" font-size="5">📦</text>
+      <rect x="42" y="58" width="11" height="9" rx="1.5" fill="#1a2030" stroke="#2a3550" stroke-width="0.7"/>
+      <text x="47.5" y="65" text-anchor="middle" font-size="4">📦</text>
+      <rect x="57" y="60" width="9" height="7" rx="1.5" fill="#1a2030" stroke="#2a3550" stroke-width="0.7"/>
+      <text x="61.5" y="66" text-anchor="middle" font-size="4">📦</text>
+    </g>` : '';
+
+  // ── REP CHARACTER (SVG person with gender-appropriate look) ──
+  // Only shows at 15%+
+  const repChar = c >= 15 ? (() => {
+    const x = 47; // horizontal center of character
+    const floorY = 68; // feet Y position
+
+    // skin tone — everyone same warm tone
+    const skin   = '#c8a882';
+    const skinDk = '#b8976e';
+
+    // hair colour per rep
+    const hairColors = {1:'#3d2b1a',2:'#2a1f14',3:'#8b7355',4:'#1a1208',5:'#1a0a14'};
+    const hairC = hairColors[repId] || '#2a1f14';
+
+    // shirt colour from their rep colour
+    const shirtColors = {1:'#1a4a8a',2:'#1a5c35',3:'#7a5c15',4:'#4a2a8a',5:'#1a5570'};
+    const shirtC = shirtColors[repId] || '#1a4a8a';
+
+    // Pants always dark navy
+    const pantsC = '#0f1e35';
+    const pantsDk= '#0a1525';
+
+    if (isFemale) {
+      // Dani — professional woman: bun hair, blouse, skirt
+      return `
+      <g class="office-layer show" id="rep-char-${repId}">
+        <!-- legs/skirt -->
+        <path d="M${x-3} ${floorY-8} Q${x} ${floorY-4} ${x+3} ${floorY-8}" fill="${pantsC}"/>
+        <rect x="${x-4}" y="${floorY-12}" width="8" height="7" rx="1.5" fill="${pantsC}"/>
+        <!-- shoes -->
+        <ellipse cx="${x-2}" cy="${floorY}" rx="2.5" ry="1.2" fill="#1a0d0d"/>
+        <ellipse cx="${x+2}" cy="${floorY}" rx="2.5" ry="1.2" fill="#1a0d0d"/>
+        <!-- body/blouse -->
+        <rect x="${x-5}" y="${floorY-22}" width="10" height="11" rx="2" fill="${shirtC}"/>
+        <!-- collar detail -->
+        <path d="M${x-2} ${floorY-22} L${x} ${floorY-19} L${x+2} ${floorY-22}" fill="${skinDk}" opacity="0.5"/>
+        <!-- arms -->
+        <rect x="${x-9}" y="${floorY-21}" width="4.5" height="8" rx="2" fill="${shirtC}"/>
+        <rect x="${x+4.5}" y="${floorY-21}" width="4.5" height="8" rx="2" fill="${shirtC}"/>
+        <!-- hands -->
+        <ellipse cx="${x-7}" cy="${floorY-12}" rx="2" ry="1.8" fill="${skin}"/>
+        <ellipse cx="${x+7}" cy="${floorY-12}" rx="2" ry="1.8" fill="${skin}"/>
+        <!-- neck -->
+        <rect x="${x-2}" y="${floorY-25}" width="4" height="4" rx="1" fill="${skin}"/>
+        <!-- head -->
+        <ellipse cx="${x}" cy="${floorY-30}" rx="5.5" ry="6" fill="${skin}"/>
+        <!-- eyes -->
+        <ellipse cx="${x-2}" cy="${floorY-31}" rx="0.9" ry="1.1" fill="#1a0a0a"/>
+        <ellipse cx="${x+2}" cy="${floorY-31}" rx="0.9" ry="1.1" fill="#1a0a0a"/>
+        <!-- smile -->
+        <path d="M${x-2} ${floorY-27} Q${x} ${floorY-25.5} ${x+2} ${floorY-27}" stroke="#8b5e3c" stroke-width="0.6" fill="none"/>
+        <!-- bun hair -->
+        <path d="M${x-5} ${floorY-34} Q${x-3} ${floorY-38} ${x} ${floorY-38} Q${x+3} ${floorY-38} ${x+5} ${floorY-34}" fill="${hairC}"/>
+        <circle cx="${x}" cy="${floorY-37}" r="3.5" fill="${hairC}"/>
+        <!-- hair bun top -->
+        <circle cx="${x}" cy="${floorY-41}" r="2.5" fill="${hairC}"/>
+        <!-- earrings -->
+        <circle cx="${x-5.5}" cy="${floorY-30}" r="0.8" fill="#d4a017"/>
+        <circle cx="${x+5.5}" cy="${floorY-30}" r="0.8" fill="#d4a017"/>
+      </g>`;
+    } else {
+      // Male reps — suit jacket, short hair
+      return `
+      <g class="office-layer show" id="rep-char-${repId}">
+        <!-- legs -->
+        <rect x="${x-4}" y="${floorY-12}" width="3.5" height="12" rx="1.5" fill="${pantsC}"/>
+        <rect x="${x+0.5}" y="${floorY-12}" width="3.5" height="12" rx="1.5" fill="${pantsC}"/>
+        <!-- shoes -->
+        <ellipse cx="${x-2.5}" cy="${floorY}" rx="3" ry="1.3" fill="#0f0808"/>
+        <ellipse cx="${x+2.5}" cy="${floorY}" rx="3" ry="1.3" fill="#0f0808"/>
+        <!-- shirt/tie under jacket -->
+        <rect x="${x-3.5}" y="${floorY-23}" width="7" height="12" rx="1" fill="white" opacity="0.9"/>
+        <rect x="${x-0.8}" y="${floorY-23}" width="1.6" height="10" rx="0.4" fill="#b42020" opacity="0.8"/>
+        <!-- jacket -->
+        <path d="M${x-6} ${floorY-23} L${x-3.5} ${floorY-24} L${x-3.5} ${floorY-11} L${x-6} ${floorY-11} Z" fill="${shirtC}" opacity="0.95"/>
+        <path d="M${x+6} ${floorY-23} L${x+3.5} ${floorY-24} L${x+3.5} ${floorY-11} L${x+6} ${floorY-11} Z" fill="${shirtC}" opacity="0.95"/>
+        <!-- lapels -->
+        <path d="M${x-3.5} ${floorY-24} L${x} ${floorY-20} L${x-3.5} ${floorY-20} Z" fill="${shirtC}" opacity="0.7"/>
+        <path d="M${x+3.5} ${floorY-24} L${x} ${floorY-20} L${x+3.5} ${floorY-20} Z" fill="${shirtC}" opacity="0.7"/>
+        <!-- sleeves -->
+        <rect x="${x-10}" y="${floorY-23}" width="4.5" height="9" rx="2" fill="${shirtC}"/>
+        <rect x="${x+5.5}" y="${floorY-23}" width="4.5" height="9" rx="2" fill="${shirtC}"/>
+        <!-- shirt cuffs -->
+        <rect x="${x-10}" y="${floorY-15}" width="4.5" height="2" rx="1" fill="white" opacity="0.8"/>
+        <rect x="${x+5.5}" y="${floorY-15}" width="4.5" height="2" rx="1" fill="white" opacity="0.8"/>
+        <!-- hands -->
+        <ellipse cx="${x-8}" cy="${floorY-12}" rx="2.3" ry="2" fill="${skin}"/>
+        <ellipse cx="${x+8}" cy="${floorY-12}" rx="2.3" ry="2" fill="${skin}"/>
+        <!-- neck -->
+        <rect x="${x-2.2}" y="${floorY-26}" width="4.4" height="4" rx="1" fill="${skin}"/>
+        <!-- head -->
+        <ellipse cx="${x}" cy="${floorY-31}" rx="5.5" ry="6.5" fill="${skin}"/>
+        <!-- eyes -->
+        <ellipse cx="${x-2}" cy="${floorY-32}" rx="0.9" ry="1.1" fill="#1a0808"/>
+        <ellipse cx="${x+2}" cy="${floorY-32}" rx="0.9" ry="1.1" fill="#1a0808"/>
+        <!-- smile -->
+        <path d="M${x-2} ${floorY-27.5} Q${x} ${floorY-26} ${x+2} ${floorY-27.5}" stroke="#8b5e3c" stroke-width="0.6" fill="none"/>
+        <!-- short hair -->
+        <path d="M${x-5.5} ${floorY-35} Q${x-4} ${floorY-40} ${x} ${floorY-40} Q${x+4} ${floorY-40} ${x+5.5} ${floorY-35}" fill="${hairC}"/>
+        <ellipse cx="${x}" cy="${floorY-38}" rx="5.5" ry="3.5" fill="${hairC}"/>
+      </g>`;
+    }
+  })() : '';
+
+  // ── Speech bubble / state label ─────────────────────────────
+  const bubble = c < 15
+    ? `<text x="50" y="28" text-anchor="middle" font-size="4.5" fill="#4a6080" opacity="0.8">Moving in...</text>`
+    : c < 30
+    ? `<text x="50" y="22" text-anchor="middle" font-size="4" fill="#4a6080" opacity="0.7">Setting up shop...</text>`
+    : c < 60
+    ? `<text x="50" y="18" text-anchor="middle" font-size="4" fill="#4a7fa8" opacity="0.7">Building momentum</text>`
+    : c < 75
+    ? `<text x="50" y="18" text-anchor="middle" font-size="4" fill="#4a9fe8" opacity="0.8">On the rise! 📈</text>`
+    : c < 100
+    ? `<text x="50" y="18" text-anchor="middle" font-size="4" fill="#4a9fe8" opacity="0.9">Almost there! 🔥</text>`
+    : `<text x="50" y="18" text-anchor="middle" font-size="4.5" fill="#f0c040" opacity="1" font-weight="bold">Hunter's Cup! 👑</text>`;
+
+  // ── Ceiling light glow ───────────────────────────────────────
+  const ceilGlow = c >= 15 ? `<radialGradient id="ceilGlow${repId}" cx="50%" cy="0%" r="60%">
+      <stop offset="0%" stop-color="${c>=60?'#2b7fd4':'#1a4a7a'}" stop-opacity="${c>=60?'0.18':'0.09'}"/>
+      <stop offset="100%" stop-color="#000" stop-opacity="0"/>
+    </radialGradient>
+    <rect x="0" y="0" width="100" height="100" fill="url(#ceilGlow${repId})"/>` : '';
+
+  // ── Floor carpet ─────────────────────────────────────────────
+  const carpet = c >= 30 ? `
+    <ellipse cx="50" cy="72" rx="30" ry="5" fill="${carpetColor}" opacity="0.6"/>` : '';
+
+  return `<div class="office-scene">
+  <svg viewBox="0 0 100 80" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">
+    <defs>
+      <linearGradient id="wallGrad${repId}" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" stop-color="${wallColor}"/>
+        <stop offset="100%" stop-color="${wallAccent}"/>
+      </linearGradient>
+      <linearGradient id="floorGrad${repId}" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" stop-color="${floorColor}"/>
+        <stop offset="100%" stop-color="#070d14"/>
+      </linearGradient>
+      <linearGradient id="winGlow" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#2b7fd4" stop-opacity="0.3"/>
+        <stop offset="100%" stop-color="#4a9fe8" stop-opacity="0.05"/>
+      </linearGradient>
+      ${ceilGlow}
+    </defs>
+
+    <!-- BACKGROUND WALL -->
+    <rect x="0" y="0" width="100" height="72" fill="url(#wallGrad${repId})"/>
+
+    <!-- WALL SKIRTING / baseboard -->
+    <rect x="0" y="69" width="100" height="2" fill="${wallAccent}" opacity="0.6"/>
+
+    <!-- FLOOR -->
+    <rect x="0" y="70" width="100" height="10" fill="url(#floorGrad${repId})"/>
+    ${carpet}
+
+    <!-- Ceiling light glow overlay -->
+    ${lightFix}
+
+    <!-- WINDOW -->
+    ${window_}
+
+    <!-- WALL ART -->
+    ${wallArt}
+
+    <!-- CONFERENCE TABLE (back-left) -->
+    ${confTable}
+
+    <!-- PLANT -->
+    ${plant}
+
+    <!-- MOVING BOXES (empty stage only) -->
+    ${boxes}
+
+    <!-- DESK -->
+    ${desk}
+
+    <!-- CHAIR -->
+    ${chair}
+
+    <!-- MONITOR / COMPUTER -->
+    ${monitor}
+
+    <!-- REP CHARACTER -->
+    ${repChar}
+
+    <!-- TROPHY -->
+    ${trophy}
+
+    <!-- STATUS LABEL -->
+    ${bubble}
+
+    <!-- PROGRESS BAR at bottom of scene -->
+    <rect x="5" y="76.5" width="90" height="2" rx="1" fill="rgba(255,255,255,0.06)"/>
+    <rect x="5" y="76.5" width="${Math.min(90, 90 * pct / 100)}" height="2" rx="1"
+          fill="${pct >= 100 ? '#f0c040' : '#2b7fd4'}" opacity="0.85"/>
+    <text x="50" y="79.5" text-anchor="middle" font-size="2.8"
+          fill="${pct >= 100 ? '#f0c040' : '#4a9fe8'}" opacity="0.9">${pct}% Complete</text>
+  </svg>
+</div>`;
 }
 
 // ── MONTHLY ───────────────────────────────────────────
@@ -1249,14 +1590,12 @@ import {getAnalytics}  from 'https://www.gstatic.com/firebasejs/12.15.0/firebase
 import {getFirestore,collection,doc,addDoc,setDoc,updateDoc,deleteDoc,onSnapshot,query,orderBy,serverTimestamp} from 'https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js';
 const cfg={apiKey:'AIzaSyDS1ZDDNfoLgsPZ3LTYuALQ8qnk04cD7P4',authDomain:'the-hunter-s-cup.firebaseapp.com',projectId:'the-hunter-s-cup',storageBucket:'the-hunter-s-cup.firebasestorage.app',messagingSenderId:'386685492457',appId:'1:386685492457:web:b695cf027102c6dec52478',measurementId:'G-G37MBCTD21'};
 const app=initializeApp(cfg);getAnalytics(app);
-const db=getFirestore(app);
-const eCol=collection(db,'entries'),lbCol=collection(db,'leaderboard');
+const db=getFirestore(app);const eCol=collection(db,'entries'),lbCol=collection(db,'leaderboard');
 let prevLid=null;
 onSnapshot(query(eCol,orderBy('createdAt','asc')),(snap)=>{
   window.entries=snap.docs.map(d=>{const v=d.data();return{firestoreId:d.id,id:typeof v.id==='number'?v.id:d.id,repId:v.repId||0,customer:v.customer||'',revenue:v.revenue||0,saletype:v.saletype||'surgical',virtual:v.virtual||false,onsite:v.onsite||false,pts:v.pts||0,date:v.date||''};});
   window.renderLeaderboard();
-  const ranked=window.getRankedReps();
-  const newLid=ranked[0]?ranked[0].rep.id:null;
+  const ranked=window.getRankedReps();const newLid=ranked[0]?ranked[0].rep.id:null;
   if(prevLid!==null&&newLid!==prevLid){window.fireConfetti();window.showToast('New Leader!',(ranked[0]?ranked[0].rep.name:'')+' just took the lead!',true);}
   prevLid=newLid;
   ranked.forEach(function(item){setDoc(doc(lbCol,String(item.rep.id)),{repId:item.rep.id,name:item.rep.name,score:item.stats.totalPts,rank:item.rank,totalRevenue:item.stats.totalRevenue,totalAccounts:item.stats.totalAccounts,updatedAt:serverTimestamp()},{merge:true}).catch(function(){});});
@@ -1290,7 +1629,7 @@ window.submitEntry=async function(){
       window.showToast('Entry Logged!','+'+pts+' pts for '+rep.name+' - "'+customer+'"',true);
       window.resetForm();
     }
-  }catch(err){console.error('submitEntry:',err);window.showToast('Save failed',err.message,false);}
+  }catch(err){window.showToast('Save failed',err.message,false);}
 };
 window.confirmDelete=async function(){
   const delId=window.pendingDelId;if(delId===null)return;
@@ -1326,10 +1665,9 @@ window.startDelete=function(id){
   document.getElementById('del-confirm-box').classList.add('visible');
   document.getElementById('del-confirm-box').scrollIntoView({behavior:'smooth',block:'nearest'});
 };
-(function(){
-  const badge=document.querySelector('.contest-badge');if(!badge)return;
-  const dot=document.createElement('span');
-  dot.title='Live';dot.style.cssText='display:inline-block;width:7px;height:7px;border-radius:50%;background:#22c55e;margin-left:6px;vertical-align:middle;box-shadow:0 0 6px #22c55e;animation:livePulse 1.8s ease-in-out infinite;';
+(function(){const badge=document.querySelector('.contest-badge');if(!badge)return;
+  const dot=document.createElement('span');dot.title='Live';
+  dot.style.cssText='display:inline-block;width:7px;height:7px;border-radius:50%;background:#22c55e;margin-left:6px;vertical-align:middle;box-shadow:0 0 6px #22c55e;animation:livePulse 1.8s ease-in-out infinite;';
   badge.appendChild(dot);
   const s=document.createElement('style');s.textContent='@keyframes livePulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.4;transform:scale(0.7)}}';
   document.head.appendChild(s);
