@@ -783,16 +783,21 @@ const LEVELS = [
   { name:'Legendary Hunter', emoji:'👑', min:40, max:Infinity },
 ];
 
+// Tracks every rep who has ever held #1 rank this session.
+// Persists across re-renders so the badge stays even when leadership changes.
+const topHunterEver = new Set();
+
 const BADGES_DEF = [
   { id:'first_strike',   icon:'🎯', name:'First Strike',       desc:'Logged first account',    check: s => s.totalAccounts >= 1 },
-  { id:'box_breaker',    icon:'📦', name:'Box Breaker',         desc:'5+ new accounts',         check: s => s.totalAccounts >= 5 },
+  { id:'box_breaker',    icon:'📦', name:'Box Breaker',         desc:'3+ new accounts',         check: s => s.totalAccounts >= 3 },
   { id:'office_builder', icon:'🏗',  name:'Office Builder',      desc:'Reached 25% office',      check: s => officePercent(s.totalPts) >= 25 },
-  { id:'rainmaker',      icon:'💰', name:'Rainmaker',           desc:'$50k+ total revenue',     check: s => s.totalRevenue >= 50000 },
-  { id:'clinic_champ',   icon:'🏥', name:'Clinic Champion',     desc:'3+ clinic sales',         check: s => s.clinicSales >= 3 },
+  { id:'exec_suite',     icon:'🏢', name:'Executive Suite',     desc:'Reached 75% office',      check: s => officePercent(s.totalPts) >= 75 },
+  { id:'rainmaker',      icon:'💰', name:'Rainmaker',           desc:'$15k+ total revenue',     check: s => s.totalRevenue >= 15000 },
+  { id:'clinic_champ',   icon:'🏥', name:'Clinic Champion',     desc:'2+ clinic sales',         check: s => s.clinicSales >= 2 },
   { id:'surgical_spec',  icon:'🩺', name:'Surgical Specialist', desc:'3+ surgical sales',       check: s => s.surgicalSales >= 3 },
-  { id:'virtual_exp',    icon:'💻', name:'Virtual Expert',      desc:'5+ virtual demos',        check: s => s.virtualDemos >= 5 },
-  { id:'road_warrior',   icon:'🚗', name:'Road Warrior',        desc:'5+ on-site demos',        check: s => s.onsiteDemos >= 5 },
-  { id:'top_hunter',     icon:'🏆', name:'Top Hunter',          desc:'Reached #1 rank',         check: s => s._isFirst },
+  { id:'virtual_exp',    icon:'💻', name:'Virtual Expert',      desc:'3+ virtual demos',        check: s => s.virtualDemos >= 3 },
+  { id:'road_warrior',   icon:'🚗', name:'Road Warrior',        desc:'2+ on-site demos',        check: s => s.onsiteDemos >= 2 },
+  { id:'top_hunter',     icon:'🏆', name:'Top Hunter',          desc:'Reached #1 rank',         check: s => s.totalPts > 0 && topHunterEver.has(s._repId) },
   { id:'hc_champion',    icon:'👑', name:"Hunter's Cup Champ",  desc:'Win the Cup',             check: s => false },
 ];
 
@@ -808,16 +813,11 @@ const OFFICE_STAGES = [
 
 const PTS_FOR_100 = 30;
 let nextId = 100;
-
-// Firebase module writes live data to window.entries.
-// var (not let) makes this a window property automatically,
-// so every function that reads `entries` sees live Firestore data.
 var entries = [];
-
 let editingId = null;
 let pendingDelId = null;
-Object.defineProperty(window, 'editingId',   { get:()=>editingId,   set:v=>{ editingId=v; },   configurable:true });
-Object.defineProperty(window, 'pendingDelId', { get:()=>pendingDelId, set:v=>{ pendingDelId=v; }, configurable:true });
+Object.defineProperty(window,'editingId',  {get:()=>editingId,  set:v=>{editingId=v;},  configurable:true});
+Object.defineProperty(window,'pendingDelId',{get:()=>pendingDelId,set:v=>{pendingDelId=v;},configurable:true});
 
 // ── PASSWORD ──────────────────────────────────────────
 function openModal(target) {
@@ -897,7 +897,7 @@ function calcPoints(revenue,saletype,virtual,onsite){
 }
 function repStats(repId){
   const rows=entries.filter(e=>e.repId===repId);
-  const s={totalPts:0,totalAccounts:rows.length,totalRevenue:0,clinicSales:0,surgicalSales:0,virtualDemos:0,onsiteDemos:0,_isFirst:false,monthlyPts:{July:0,August:0,September:0}};
+  const s={totalPts:0,totalAccounts:rows.length,totalRevenue:0,clinicSales:0,surgicalSales:0,virtualDemos:0,onsiteDemos:0,_isFirst:false,_repId:repId,monthlyPts:{July:0,August:0,September:0}};
   rows.forEach(e=>{
     s.totalPts+=e.pts; s.totalRevenue+=e.revenue;
     if(e.saletype==='clinic') s.clinicSales++; if(e.saletype==='surgical') s.surgicalSales++;
@@ -917,23 +917,26 @@ function getNextOfficeStage(pct){ const c=Math.min(pct,100); for(const s of OFFI
 function rankSuffix(r){ return r===1?'1st':r===2?'2nd':r===3?'3rd':r+'th'; }
 function fmtMoney(n){ return '$'+Number(n||0).toLocaleString('en-US'); }
 function getRankedReps(){
-  return REPS.map(r=>({rep:r,stats:repStats(r.id)})).sort((a,b)=>b.stats.totalPts-a.stats.totalPts).map((item,i)=>{item.rank=i+1;if(i===0)item.stats._isFirst=true;return item;});
+  const ranked = REPS.map(r=>({rep:r,stats:repStats(r.id)})).sort((a,b)=>b.stats.totalPts-a.stats.totalPts).map((item,i)=>{
+    item.rank = i+1;
+    item.stats._isFirst = (i === 0);
+    // Only crown as #1 if they have at least 1 point
+    if (i === 0 && item.stats.totalPts > 0) topHunterEver.add(item.rep.id);
+    return item;
+  });
+  return ranked;
 }
 
 // ── CONTEST WEEK / MONTH HELPERS ─────────────────────────
-function getContestWeek() {
-  const start = new Date('2026-07-01T00:00:00');
-  const now   = new Date();
-  if (now < start) return 1;
-  if (now >= new Date('2026-10-01T00:00:00')) return 13;
-  return Math.min(13, Math.floor((now - start) / (1000 * 60 * 60 * 24 * 7)) + 1);
+function getContestWeek(){
+  const start=new Date('2026-07-01T00:00:00');const now=new Date();
+  if(now<start)return 1;if(now>=new Date('2026-10-01T00:00:00'))return 13;
+  return Math.min(13,Math.floor((now-start)/(1000*60*60*24*7))+1);
 }
-function getContestMonth() {
-  const m = new Date().getMonth();
-  if (m === 6) return 'July';
-  if (m === 7) return 'August';
-  if (m === 8) return 'September';
-  return new Date() < new Date('2026-07-01') ? 'July' : 'September';
+function getContestMonth(){
+  const m=new Date().getMonth();
+  if(m===6)return 'July';if(m===7)return 'August';if(m===8)return 'September';
+  return new Date()<new Date('2026-07-01')?'July':'September';
 }
 
 // ── LEADERBOARD ───────────────────────────────────────
@@ -1198,22 +1201,18 @@ function buildOfficeHTML(pct,stage){
 function renderMonthly(){
   const ranked=getRankedReps(); const months=['July','August','September'];
   const winners=months.map(m=>{const best=ranked.map(r=>({rep:r.rep,pts:r.stats.monthlyPts[m]})).sort((a,b)=>b.pts-a.pts)[0];return{month:m,winner:best.pts>0?best.rep:null,pts:best.pts};});
-  const now = new Date();
-  const julOver = now >= new Date('2026-08-01T00:00:00');
-  const augOver = now >= new Date('2026-09-01T00:00:00');
-  const sepOver = now >= new Date('2026-10-01T00:00:00');
+  const now=new Date();
+  const julOver=now>=new Date('2026-08-01T00:00:00');
+  const augOver=now>=new Date('2026-09-01T00:00:00');
+  const sepOver=now>=new Date('2026-10-01T00:00:00');
   document.getElementById('monthly-cards').innerHTML=winners.map((mw,i)=>{
-    const isOver = i===0?julOver : i===1?augOver : sepOver;
-    const label  = i===2 ? "The Hunter's Cup Champion" : mw.month+' Champion';
-    const prize  = i===0 ? '$250 Mini Prize' : i===1 ? '$250 Mini Prize' : '$1,500 Grand Prize';
+    const isOver=i===0?julOver:i===1?augOver:sepOver;
+    const label=i===2?"The Hunter's Cup Champion":mw.month+' Champion';
+    const prize=i===0?'$250 Mini Prize':i===1?'$250 Mini Prize':'$1,500 Grand Prize';
     let inner;
-    if (!isOver) {
-      inner = `<div class="monthly-winner" style="color:var(--k-silver);font-size:14px">${i===0?'In Progress...':'Pending'}</div><div class="monthly-pts" style="color:var(--k-silver)">${prize}</div>`;
-    } else if (mw.winner && mw.pts > 0) {
-      inner = `<div class="monthly-winner">${mw.winner.name}</div><div class="monthly-pts">${mw.pts} pts · ${prize}</div>`;
-    } else {
-      inner = `<div class="monthly-winner" style="color:var(--k-silver);font-size:14px">Pending</div><div class="monthly-pts" style="color:var(--k-silver)">${prize}</div>`;
-    }
+    if(!isOver){inner=`<div class="monthly-winner" style="color:var(--k-silver);font-size:14px">${i===0?'In Progress...':'Pending'}</div><div class="monthly-pts" style="color:var(--k-silver)">${prize}</div>`;}
+    else if(mw.winner&&mw.pts>0){inner=`<div class="monthly-winner">${mw.winner.name}</div><div class="monthly-pts">${mw.pts} pts · ${prize}</div>`;}
+    else{inner=`<div class="monthly-winner" style="color:var(--k-silver);font-size:14px">Pending</div><div class="monthly-pts" style="color:var(--k-silver)">${prize}</div>`;}
     return `<div class="monthly-card ${isOver&&i===0?'champion':''}"><div class="monthly-trophy">${i===2?'👑':'🏆'}</div><div class="monthly-month">${label}</div>${inner}</div>`;
   }).join('');
   const mc=document.getElementById('monthly-chart'); if(mc._ci) mc._ci.destroy();
@@ -1228,13 +1227,13 @@ function showToast(title,body,good){const t=document.getElementById('toast');doc
 function fireConfetti(){const cols=['#2b7fd4','#4a9fe8','#7bbff0','#ffffff','#22c55e','#f59e0b'];for(let i=0;i<60;i++){setTimeout(()=>{const el=document.createElement('div');el.className='confetti-piece';el.style.cssText=`left:${Math.random()*100}vw;top:-10px;background:${cols[Math.floor(Math.random()*cols.length)]};width:${6+Math.random()*6}px;height:${6+Math.random()*6}px;animation-duration:${2+Math.random()*2}s;animation-delay:${Math.random()*0.5}s`;document.body.appendChild(el);setTimeout(()=>el.remove(),4000);},i*30);}}
 
 // ── INIT ──────────────────────────────────────────────
-window.addEventListener('load', () => {
-  document.getElementById('f-rep').innerHTML = REPS.map(r => `<option value="${r.id}">${r.name}</option>`).join('');
-  document.getElementById('filter-rep').innerHTML = '<option value="0">All reps</option>' + REPS.map(r => `<option value="${r.id}">${r.name}</option>`).join('');
-  document.getElementById('f-revenue').addEventListener('input', calcPts);
-  document.getElementById('f-saletype').addEventListener('change', calcPts);
+window.addEventListener('load',()=>{
+  document.getElementById('f-rep').innerHTML=REPS.map(r=>`<option value="${r.id}">${r.name}</option>`).join('');
+  document.getElementById('filter-rep').innerHTML='<option value="0">All reps</option>'+REPS.map(r=>`<option value="${r.id}">${r.name}</option>`).join('');
+  document.getElementById('f-revenue').addEventListener('input',calcPts);
+  document.getElementById('f-saletype').addEventListener('change',calcPts);
   calcPts();
-  document.getElementById('leaderboard-list').innerHTML = '<div style="text-align:center;padding:48px;color:var(--k-silver)"><i class="ti ti-loader" style="font-size:32px;display:block;margin-bottom:12px"></i>Loading live data...</div>';
+  document.getElementById('leaderboard-list').innerHTML='<div style="text-align:center;padding:48px;color:var(--k-silver)"><i class="ti ti-loader" style="font-size:32px;display:block;margin-bottom:12px"></i>Loading live data...</div>';
 });
 window.REPS=REPS;window.calcPoints=calcPoints;window.calcPts=calcPts;
 window.getRankedReps=getRankedReps;window.renderLeaderboard=renderLeaderboard;
@@ -1245,27 +1244,26 @@ window.resetForm=resetForm;window.cancelEdit=cancelEdit;
 </script>
 
 <script type="module">
-import { initializeApp }  from 'https://www.gstatic.com/firebasejs/12.15.0/firebase-app.js';
-import { getAnalytics }   from 'https://www.gstatic.com/firebasejs/12.15.0/firebase-analytics.js';
-import { getFirestore, collection, doc, addDoc, setDoc, updateDoc, deleteDoc, onSnapshot, query, orderBy, serverTimestamp } from 'https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js';
-const firebaseConfig={apiKey:'AIzaSyDS1ZDDNfoLgsPZ3LTYuALQ8qnk04cD7P4',authDomain:'the-hunter-s-cup.firebaseapp.com',projectId:'the-hunter-s-cup',storageBucket:'the-hunter-s-cup.firebasestorage.app',messagingSenderId:'386685492457',appId:'1:386685492457:web:b695cf027102c6dec52478',measurementId:'G-G37MBCTD21'};
-const app=initializeApp(firebaseConfig);getAnalytics(app);
+import {initializeApp} from 'https://www.gstatic.com/firebasejs/12.15.0/firebase-app.js';
+import {getAnalytics}  from 'https://www.gstatic.com/firebasejs/12.15.0/firebase-analytics.js';
+import {getFirestore,collection,doc,addDoc,setDoc,updateDoc,deleteDoc,onSnapshot,query,orderBy,serverTimestamp} from 'https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js';
+const cfg={apiKey:'AIzaSyDS1ZDDNfoLgsPZ3LTYuALQ8qnk04cD7P4',authDomain:'the-hunter-s-cup.firebaseapp.com',projectId:'the-hunter-s-cup',storageBucket:'the-hunter-s-cup.firebasestorage.app',messagingSenderId:'386685492457',appId:'1:386685492457:web:b695cf027102c6dec52478',measurementId:'G-G37MBCTD21'};
+const app=initializeApp(cfg);getAnalytics(app);
 const db=getFirestore(app);
-const entriesCol=collection(db,'entries');
-const lbCol=collection(db,'leaderboard');
-let prevLeaderId=null;
-onSnapshot(query(entriesCol,orderBy('createdAt','asc')),(snapshot)=>{
-  window.entries=snapshot.docs.map(d=>{const data=d.data();return{firestoreId:d.id,id:typeof data.id==='number'?data.id:d.id,repId:data.repId||0,customer:data.customer||'',revenue:data.revenue||0,saletype:data.saletype||'surgical',virtual:data.virtual||false,onsite:data.onsite||false,pts:data.pts||0,date:data.date||''};});
+const eCol=collection(db,'entries'),lbCol=collection(db,'leaderboard');
+let prevLid=null;
+onSnapshot(query(eCol,orderBy('createdAt','asc')),(snap)=>{
+  window.entries=snap.docs.map(d=>{const v=d.data();return{firestoreId:d.id,id:typeof v.id==='number'?v.id:d.id,repId:v.repId||0,customer:v.customer||'',revenue:v.revenue||0,saletype:v.saletype||'surgical',virtual:v.virtual||false,onsite:v.onsite||false,pts:v.pts||0,date:v.date||''};});
   window.renderLeaderboard();
   const ranked=window.getRankedReps();
   const newLid=ranked[0]?ranked[0].rep.id:null;
-  if(prevLeaderId!==null&&newLid!==prevLeaderId){window.fireConfetti();window.showToast('New Leader!',(ranked[0]?ranked[0].rep.name:'')+' just took the lead!',true);}
-  prevLeaderId=newLid;
+  if(prevLid!==null&&newLid!==prevLid){window.fireConfetti();window.showToast('New Leader!',(ranked[0]?ranked[0].rep.name:'')+' just took the lead!',true);}
+  prevLid=newLid;
   ranked.forEach(function(item){setDoc(doc(lbCol,String(item.rep.id)),{repId:item.rep.id,name:item.rep.name,score:item.stats.totalPts,rank:item.rank,totalRevenue:item.stats.totalRevenue,totalAccounts:item.stats.totalAccounts,updatedAt:serverTimestamp()},{merge:true}).catch(function(){});});
   const active=document.querySelector('.section.active');
   if(active&&active.id==='section-monthly')window.renderMonthly();
   if(active&&active.id==='section-entries')window.renderAllEntries();
-},function(err){console.error('Firestore error:',err);window.showToast('Connection issue','Could not reach the database.',false);});
+},function(err){console.error('Firestore:',err);window.showToast('Connection issue','Could not reach the database.',false);});
 window.submitEntry=async function(){
   const repId=parseInt(document.getElementById('f-rep').value);
   const customer=document.getElementById('f-customer').value.trim();
@@ -1282,28 +1280,27 @@ window.submitEntry=async function(){
   try{
     const editId=window.editingId;
     if(editId!==null){
-      const existing=window.entries.find(function(e){return e.firestoreId===editId||e.id===editId;});
-      if(!existing){window.showToast('Error','Entry not found.',false);return;}
-      await updateDoc(doc(db,'entries',String(existing.firestoreId)),{repId,customer,revenue,saletype,virtual,onsite,pts,updatedAt:serverTimestamp()});
+      const ex=window.entries.find(function(e){return e.firestoreId===editId||e.id===editId;});
+      if(!ex){window.showToast('Error','Entry not found.',false);return;}
+      await updateDoc(doc(db,'entries',String(ex.firestoreId)),{repId,customer,revenue,saletype,virtual,onsite,pts,updatedAt:serverTimestamp()});
       window.showToast('Entry updated','"'+customer+'" saved - '+pts+' pts for '+rep.name+'.',true);
       window.resetForm();window.showProtectedSection('entries');
     }else{
-      await addDoc(entriesCol,{id:Date.now(),repId,customer,revenue,saletype,virtual,onsite,pts,date:dateStr,createdAt:serverTimestamp()});
+      await addDoc(eCol,{id:Date.now(),repId,customer,revenue,saletype,virtual,onsite,pts,date:dateStr,createdAt:serverTimestamp()});
       window.showToast('Entry Logged!','+'+pts+' pts for '+rep.name+' - "'+customer+'"',true);
       window.resetForm();
     }
-  }catch(err){console.error('submitEntry error:',err);window.showToast('Save failed',err.message,false);}
+  }catch(err){console.error('submitEntry:',err);window.showToast('Save failed',err.message,false);}
 };
 window.confirmDelete=async function(){
   const delId=window.pendingDelId;if(delId===null)return;
   const e=window.entries.find(function(en){return en.id===delId||en.firestoreId===delId;});
-  const rep=window.REPS.find(function(r){return r.id===(e?e.repId:-1);});
   if(!e){window.pendingDelId=null;document.getElementById('del-confirm-box').classList.remove('visible');return;}
   try{
     await deleteDoc(doc(db,'entries',String(e.firestoreId)));
     window.pendingDelId=null;document.getElementById('del-confirm-box').classList.remove('visible');
     window.showToast('Entry deleted','"'+e.customer+'" removed.',false);
-  }catch(err){console.error('delete error:',err);window.showToast('Delete failed',err.message,false);}
+  }catch(err){window.showToast('Delete failed',err.message,false);}
 };
 window.startEdit=function(id){
   const e=window.entries.find(function(en){return en.id===id||en.firestoreId===id;});if(!e)return;
