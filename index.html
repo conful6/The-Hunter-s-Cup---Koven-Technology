@@ -123,7 +123,6 @@
   /* OFFICE SCENE */
   .office-scene{width:100%;aspect-ratio:16/9;max-height:320px;border-radius:14px;border:1px solid var(--k-border2);overflow:hidden;position:relative;background:#0a0f1a;box-shadow:0 8px 32px rgba(0,0,0,0.5);}
   .office-scene svg{width:100%;height:100%;display:block;}
-  /* fade-in for svg groups */
   .office-layer{opacity:0;transition:opacity 0.7s ease,transform 0.7s ease;transform:translateY(8px);}
   .office-layer.show{opacity:1;transform:translateY(0);}
 
@@ -642,7 +641,7 @@
           <i class="ti ti-chevron-down rules-card-chevron open" id="chev-submit"></i>
         </div>
         <div class="rules-card-body open" id="body-submit">
-          <div class="rule-item"><div class="rule-bullet">1</div><div class="rule-text"><strong>Email the new customer invoice to Carolyn</strong> and CC Stephen to officially track the new business. This is required for every qualifying account.</div></div>
+          <div class="rule-item"><div class="rule-bullet">1</div><div class="rule-text"><strong>Email the new customer invoice to Carolyn</strong> and CC Kaelyn to officially track the new business. This is required for every qualifying account.</div></div>
           <div class="rule-item"><div class="rule-bullet">2</div><div class="rule-text">Ensure <strong>clear notes are entered in Goldmine</strong>.</div></div>
           <div class="rule-item"><div class="rule-bullet">3</div><div class="rule-text">Once the item ships and the submission is verified, the leaderboard will be updated and points will be awarded.</div></div>
           <div style="margin-top:14px">
@@ -653,7 +652,7 @@
             </div>
             <div class="contact-box" style="margin-top:8px">
               <div class="contact-avatar">👨‍💼</div>
-              <div><div class="contact-name">Stephen</div><div class="contact-role">CC on all new account invoice submissions</div></div>
+              <div><div class="contact-name">Kaelyn</div><div class="contact-role">CC on all new account invoice submissions</div></div>
             </div>
           </div>
         </div>
@@ -1181,7 +1180,7 @@ function showProfile(repId){
       </div>
       ${entries.filter(e=>e.repId===repId).map(e=>`<div style="background:rgba(0,0,0,0.3);border:1px solid var(--k-border);border-radius:10px;padding:12px 16px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center"><div><div style="font-size:14px;font-weight:600;color:var(--k-white)">${e.customer}</div><div style="font-size:11px;color:var(--k-silver);margin-top:2px">${e.date} · ${e.saletype} · ${fmtMoney(e.revenue)} · ${[e.virtual?'Virtual':'',e.onsite?'On-site':''].filter(Boolean).join(' + ')||'No demo'}</div></div><div style="text-align:right"><div style="font-size:20px;font-weight:800;color:var(--k-blue2)">${e.pts}</div><div style="font-size:10px;color:var(--k-silver)">pts</div></div></div>`).join('')||'<div class="empty-state"><i class="ti ti-inbox"></i><p>No entries yet</p></div>'}
     </div>`;
-  // SVG office layers animate via CSS transitions on load
+  // SVG office layers animate via CSS transitions
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
   document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
   document.getElementById('section-profile').classList.add('active');
