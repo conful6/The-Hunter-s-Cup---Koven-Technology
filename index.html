@@ -295,7 +295,7 @@
   .cover-content{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;text-align:center;padding:40px 24px;max-width:700px;width:100%;animation:coverIn 1.1s ease forwards;}
   @keyframes coverIn{from{opacity:0;transform:translateY(28px);}to{opacity:1;transform:translateY(0);}}
   .cover-eyebrow{font-size:16px;letter-spacing:3px;text-transform:uppercase;color:var(--k-blue2);font-weight:700;margin-bottom:18px;}
-  .cover-logo-text{font-size:clamp(56px,9vw,96px);font-weight:900;letter-spacing:-3px;line-height:0.92;color:var(--k-white);margin-bottom:6px;}
+  .cover-logo-text{font-size:clamp(56px,9vw,96px);font-weight:900;letter-spacing:-3px;line-height:1.05;color:var(--k-white);margin-bottom:16px;}
   .cover-logo-text span{background:linear-gradient(135deg,var(--k-blue2),var(--k-blue3));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
   .cover-tagline-main{font-size:clamp(13px,2.2vw,18px);color:var(--k-silver);font-style:italic;margin-bottom:10px;letter-spacing:0.3px;}
   .cover-slogan{font-size:clamp(10px,1.8vw,13px);text-transform:uppercase;letter-spacing:4px;color:var(--k-blue2);font-weight:700;margin-bottom:44px;opacity:0.85;}
@@ -776,11 +776,11 @@ const REPS = [
 const LEVELS = [
   { name:'Rookie Hunter',    emoji:'🌱', min:0,  max:4  },
   { name:'Scout',            emoji:'🎯', min:5,  max:9  },
-  { name:'Tracker',          emoji:'🧭', min:10, max:19 },
-  { name:'Skilled Hunter',   emoji:'🏹', min:20, max:34 },
-  { name:'Elite Hunter',     emoji:'🦅', min:35, max:54 },
-  { name:'Master Hunter',    emoji:'⭐', min:55, max:79 },
-  { name:'Legendary Hunter', emoji:'👑', min:80, max:Infinity },
+  { name:'Tracker',          emoji:'🧭', min:10, max:14 },
+  { name:'Skilled Hunter',   emoji:'🏹', min:15, max:19 },
+  { name:'Elite Hunter',     emoji:'🦅', min:20, max:27 },
+  { name:'Master Hunter',    emoji:'⭐', min:28, max:39 },
+  { name:'Legendary Hunter', emoji:'👑', min:40, max:Infinity },
 ];
 
 const BADGES_DEF = [
@@ -809,10 +809,9 @@ const OFFICE_STAGES = [
 const PTS_FOR_100 = 30;
 let nextId = 100;
 
-// Firebase module writes live data here via window.entries.
-// Using var (not let) so it becomes window.entries automatically
-// in this classic script — every function that reads `entries`
-// will see the live Firestore data without any other changes.
+// Firebase module writes live data to window.entries.
+// var (not let) makes this a window property automatically,
+// so every function that reads `entries` sees live Firestore data.
 var entries = [];
 
 let editingId = null;
@@ -923,25 +922,18 @@ function getRankedReps(){
 
 // ── CONTEST WEEK / MONTH HELPERS ─────────────────────────
 function getContestWeek() {
-  // Contest starts July 1, 2026. Week 1 = Jul 1–Jul 6.
-  // Week number advances every Monday.
   const start = new Date('2026-07-01T00:00:00');
   const now   = new Date();
   if (now < start) return 1;
-  const end = new Date('2026-10-01T00:00:00');
-  if (now >= end) return 13;
-  const msSinceStart = now - start;
-  const daysSinceStart = Math.floor(msSinceStart / (1000 * 60 * 60 * 24));
-  return Math.min(13, Math.floor(daysSinceStart / 7) + 1);
+  if (now >= new Date('2026-10-01T00:00:00')) return 13;
+  return Math.min(13, Math.floor((now - start) / (1000 * 60 * 60 * 24 * 7)) + 1);
 }
 function getContestMonth() {
-  const now = new Date();
-  const m = now.getMonth(); // 0-indexed
+  const m = new Date().getMonth();
   if (m === 6) return 'July';
   if (m === 7) return 'August';
   if (m === 8) return 'September';
-  if (now < new Date('2026-07-01')) return 'July';
-  return 'September';
+  return new Date() < new Date('2026-07-01') ? 'July' : 'September';
 }
 
 // ── LEADERBOARD ───────────────────────────────────────
@@ -1207,13 +1199,12 @@ function renderMonthly(){
   const ranked=getRankedReps(); const months=['July','August','September'];
   const winners=months.map(m=>{const best=ranked.map(r=>({rep:r.rep,pts:r.stats.monthlyPts[m]})).sort((a,b)=>b.pts-a.pts)[0];return{month:m,winner:best.pts>0?best.rep:null,pts:best.pts};});
   const now = new Date();
-  const sepOver = now >= new Date('2026-10-01T00:00:00');
   const julOver = now >= new Date('2026-08-01T00:00:00');
   const augOver = now >= new Date('2026-09-01T00:00:00');
+  const sepOver = now >= new Date('2026-10-01T00:00:00');
   document.getElementById('monthly-cards').innerHTML=winners.map((mw,i)=>{
     const isOver = i===0?julOver : i===1?augOver : sepOver;
     const label  = i===2 ? "The Hunter's Cup Champion" : mw.month+' Champion';
-    const trophy = i===2 ? '👑' : '🏆';
     const prize  = i===0 ? '$250 Mini Prize' : i===1 ? '$250 Mini Prize' : '$1,500 Grand Prize';
     let inner;
     if (!isOver) {
@@ -1223,7 +1214,7 @@ function renderMonthly(){
     } else {
       inner = `<div class="monthly-winner" style="color:var(--k-silver);font-size:14px">Pending</div><div class="monthly-pts" style="color:var(--k-silver)">${prize}</div>`;
     }
-    return `<div class="monthly-card ${isOver&&i===0?'champion':''}"><div class="monthly-trophy">${trophy}</div><div class="monthly-month">${label}</div>${inner}</div>`;
+    return `<div class="monthly-card ${isOver&&i===0?'champion':''}"><div class="monthly-trophy">${i===2?'👑':'🏆'}</div><div class="monthly-month">${label}</div>${inner}</div>`;
   }).join('');
   const mc=document.getElementById('monthly-chart'); if(mc._ci) mc._ci.destroy();
   mc._ci=new Chart(mc,{type:'bar',data:{labels:REPS.map(r=>r.name.split(' ')[0]),datasets:months.map((m,i)=>({label:m,data:REPS.map(r=>repStats(r.id).monthlyPts[m]),backgroundColor:['rgba(43,127,212,0.75)','rgba(74,159,232,0.65)','rgba(123,191,240,0.55)'][i],borderRadius:4,borderSkipped:false}))},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#8ea8c3',font:{size:11}}}},scales:{x:{ticks:{color:'#8ea8c3',font:{size:11}},grid:{color:'rgba(255,255,255,0.04)'}},y:{ticks:{color:'#8ea8c3',font:{size:11}},grid:{color:'rgba(255,255,255,0.04)'}}}}});
@@ -1245,191 +1236,107 @@ window.addEventListener('load', () => {
   calcPts();
   document.getElementById('leaderboard-list').innerHTML = '<div style="text-align:center;padding:48px;color:var(--k-silver)"><i class="ti ti-loader" style="font-size:32px;display:block;margin-bottom:12px"></i>Loading live data...</div>';
 });
-
-// Expose everything the Firebase ES module needs
-window.REPS                 = REPS;
-window.calcPoints           = calcPoints;
-window.calcPts              = calcPts;
-window.getRankedReps        = getRankedReps;
-window.renderLeaderboard    = renderLeaderboard;
-window.renderMonthly        = renderMonthly;
-window.renderAllEntries     = renderAllEntries;
-window.showToast            = showToast;
-window.fireConfetti         = fireConfetti;
-window.showProtectedSection = showProtectedSection;
-window.resetForm            = resetForm;
-window.cancelEdit           = cancelEdit;
+window.REPS=REPS;window.calcPoints=calcPoints;window.calcPts=calcPts;
+window.getRankedReps=getRankedReps;window.renderLeaderboard=renderLeaderboard;
+window.renderMonthly=renderMonthly;window.renderAllEntries=renderAllEntries;
+window.showToast=showToast;window.fireConfetti=fireConfetti;
+window.showProtectedSection=showProtectedSection;
+window.resetForm=resetForm;window.cancelEdit=cancelEdit;
 </script>
 
-<!-- Firebase real-time sync -->
 <script type="module">
 import { initializeApp }  from 'https://www.gstatic.com/firebasejs/12.15.0/firebase-app.js';
 import { getAnalytics }   from 'https://www.gstatic.com/firebasejs/12.15.0/firebase-analytics.js';
-import {
-  getFirestore, collection, doc,
-  addDoc, setDoc, updateDoc, deleteDoc,
-  onSnapshot, query, orderBy, serverTimestamp
-} from 'https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js';
-
-const firebaseConfig = {
-  apiKey:            'AIzaSyDS1ZDDNfoLgsPZ3LTYuALQ8qnk04cD7P4',
-  authDomain:        'the-hunter-s-cup.firebaseapp.com',
-  projectId:         'the-hunter-s-cup',
-  storageBucket:     'the-hunter-s-cup.firebasestorage.app',
-  messagingSenderId: '386685492457',
-  appId:             '1:386685492457:web:b695cf027102c6dec52478',
-  measurementId:     'G-G37MBCTD21'
-};
-const app        = initializeApp(firebaseConfig);
-const analytics  = getAnalytics(app);
-const db         = getFirestore(app);
-const entriesCol = collection(db, 'entries');
-const lbCol      = collection(db, 'leaderboard');
-
-let prevLeaderId = null;
-const q = query(entriesCol, orderBy('createdAt', 'asc'));
-
-onSnapshot(q, (snapshot) => {
-  // Overwrite window.entries (= the global var entries) with live Firestore data
-  window.entries = snapshot.docs.map(d => {
-    const data = d.data();
-    return {
-      firestoreId: d.id,
-      id:       typeof data.id === 'number' ? data.id : d.id,
-      repId:    data.repId    || 0,
-      customer: data.customer || '',
-      revenue:  data.revenue  || 0,
-      saletype: data.saletype || 'surgical',
-      virtual:  data.virtual  || false,
-      onsite:   data.onsite   || false,
-      pts:      data.pts      || 0,
-      date:     data.date     || '',
-    };
-  });
+import { getFirestore, collection, doc, addDoc, setDoc, updateDoc, deleteDoc, onSnapshot, query, orderBy, serverTimestamp } from 'https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js';
+const firebaseConfig={apiKey:'AIzaSyDS1ZDDNfoLgsPZ3LTYuALQ8qnk04cD7P4',authDomain:'the-hunter-s-cup.firebaseapp.com',projectId:'the-hunter-s-cup',storageBucket:'the-hunter-s-cup.firebasestorage.app',messagingSenderId:'386685492457',appId:'1:386685492457:web:b695cf027102c6dec52478',measurementId:'G-G37MBCTD21'};
+const app=initializeApp(firebaseConfig);getAnalytics(app);
+const db=getFirestore(app);
+const entriesCol=collection(db,'entries');
+const lbCol=collection(db,'leaderboard');
+let prevLeaderId=null;
+onSnapshot(query(entriesCol,orderBy('createdAt','asc')),(snapshot)=>{
+  window.entries=snapshot.docs.map(d=>{const data=d.data();return{firestoreId:d.id,id:typeof data.id==='number'?data.id:d.id,repId:data.repId||0,customer:data.customer||'',revenue:data.revenue||0,saletype:data.saletype||'surgical',virtual:data.virtual||false,onsite:data.onsite||false,pts:data.pts||0,date:data.date||''};});
   window.renderLeaderboard();
-  const ranked = window.getRankedReps();
-  const newLeaderId = ranked[0] ? ranked[0].rep.id : null;
-  if (prevLeaderId !== null && newLeaderId !== prevLeaderId) {
-    window.fireConfetti();
-    window.showToast('New Leader!', (ranked[0] ? ranked[0].rep.name : '') + ' just took the lead!', true);
-  }
-  prevLeaderId = newLeaderId;
-  ranked.forEach(function(item) {
-    setDoc(doc(lbCol, String(item.rep.id)), {
-      repId: item.rep.id, name: item.rep.name,
-      score: item.stats.totalPts, rank: item.rank,
-      totalRevenue: item.stats.totalRevenue,
-      totalAccounts: item.stats.totalAccounts,
-      updatedAt: serverTimestamp(),
-    }, { merge: true }).catch(function() {});
-  });
-  const active = document.querySelector('.section.active');
-  if (active && active.id === 'section-monthly') window.renderMonthly();
-  if (active && active.id === 'section-entries') window.renderAllEntries();
-}, function(err) {
-  console.error('Firestore error:', err);
-  window.showToast('Connection issue', 'Could not reach the database.', false);
-});
-
-window.submitEntry = async function () {
-  const repId    = parseInt(document.getElementById('f-rep').value);
-  const customer = document.getElementById('f-customer').value.trim();
-  const revenue  = parseFloat(document.getElementById('f-revenue').value) || 0;
-  const saletype = document.getElementById('f-saletype').value;
-  const virtual  = document.getElementById('f-virtual').checked;
-  const onsite   = document.getElementById('f-onsite').checked;
-  if (!customer) { window.showToast('Missing info', 'Please enter a customer name.', false); return; }
-  if (saletype === '0') { window.showToast('Missing info', 'Please select a sale type.', false); return; }
-  const pts     = window.calcPoints(revenue, saletype, virtual, onsite);
-  const rep     = window.REPS.find(function(r) { return r.id === repId; });
-  const mo      = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  const dateStr = mo[new Date().getMonth()] + ' ' + new Date().getDate();
-  try {
-    const editId = window.editingId;
-    if (editId !== null) {
-      const existing = window.entries.find(function(e) { return e.firestoreId === editId || e.id === editId; });
-      if (!existing) { window.showToast('Error', 'Entry not found.', false); return; }
-      await updateDoc(doc(db, 'entries', String(existing.firestoreId)), {
-        repId, customer, revenue, saletype, virtual, onsite, pts, updatedAt: serverTimestamp(),
-      });
-      window.showToast('Entry updated', '"' + customer + '" saved - ' + pts + ' pts for ' + rep.name + '.', true);
-      window.resetForm();
-      window.showProtectedSection('entries');
-    } else {
-      await addDoc(entriesCol, {
-        id: Date.now(), repId, customer, revenue, saletype, virtual, onsite, pts,
-        date: dateStr, createdAt: serverTimestamp(),
-      });
-      window.showToast('Entry Logged!', '+' + pts + ' pts for ' + rep.name + ' - "' + customer + '"', true);
+  const ranked=window.getRankedReps();
+  const newLid=ranked[0]?ranked[0].rep.id:null;
+  if(prevLeaderId!==null&&newLid!==prevLeaderId){window.fireConfetti();window.showToast('New Leader!',(ranked[0]?ranked[0].rep.name:'')+' just took the lead!',true);}
+  prevLeaderId=newLid;
+  ranked.forEach(function(item){setDoc(doc(lbCol,String(item.rep.id)),{repId:item.rep.id,name:item.rep.name,score:item.stats.totalPts,rank:item.rank,totalRevenue:item.stats.totalRevenue,totalAccounts:item.stats.totalAccounts,updatedAt:serverTimestamp()},{merge:true}).catch(function(){});});
+  const active=document.querySelector('.section.active');
+  if(active&&active.id==='section-monthly')window.renderMonthly();
+  if(active&&active.id==='section-entries')window.renderAllEntries();
+},function(err){console.error('Firestore error:',err);window.showToast('Connection issue','Could not reach the database.',false);});
+window.submitEntry=async function(){
+  const repId=parseInt(document.getElementById('f-rep').value);
+  const customer=document.getElementById('f-customer').value.trim();
+  const revenue=parseFloat(document.getElementById('f-revenue').value)||0;
+  const saletype=document.getElementById('f-saletype').value;
+  const virtual=document.getElementById('f-virtual').checked;
+  const onsite=document.getElementById('f-onsite').checked;
+  if(!customer){window.showToast('Missing info','Please enter a customer name.',false);return;}
+  if(saletype==='0'){window.showToast('Missing info','Please select a sale type.',false);return;}
+  const pts=window.calcPoints(revenue,saletype,virtual,onsite);
+  const rep=window.REPS.find(function(r){return r.id===repId;});
+  const mo=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const dateStr=mo[new Date().getMonth()]+' '+new Date().getDate();
+  try{
+    const editId=window.editingId;
+    if(editId!==null){
+      const existing=window.entries.find(function(e){return e.firestoreId===editId||e.id===editId;});
+      if(!existing){window.showToast('Error','Entry not found.',false);return;}
+      await updateDoc(doc(db,'entries',String(existing.firestoreId)),{repId,customer,revenue,saletype,virtual,onsite,pts,updatedAt:serverTimestamp()});
+      window.showToast('Entry updated','"'+customer+'" saved - '+pts+' pts for '+rep.name+'.',true);
+      window.resetForm();window.showProtectedSection('entries');
+    }else{
+      await addDoc(entriesCol,{id:Date.now(),repId,customer,revenue,saletype,virtual,onsite,pts,date:dateStr,createdAt:serverTimestamp()});
+      window.showToast('Entry Logged!','+'+pts+' pts for '+rep.name+' - "'+customer+'"',true);
       window.resetForm();
     }
-  } catch (err) {
-    console.error('submitEntry error:', err);
-    window.showToast('Save failed', err.message, false);
-  }
+  }catch(err){console.error('submitEntry error:',err);window.showToast('Save failed',err.message,false);}
 };
-
-window.confirmDelete = async function () {
-  const delId = window.pendingDelId;
-  if (delId === null) return;
-  const e   = window.entries.find(function(en) { return en.id === delId || en.firestoreId === delId; });
-  const rep = window.REPS.find(function(r) { return r.id === (e ? e.repId : -1); });
-  if (!e) { window.pendingDelId = null; document.getElementById('del-confirm-box').classList.remove('visible'); return; }
-  try {
-    await deleteDoc(doc(db, 'entries', String(e.firestoreId)));
-    window.pendingDelId = null;
-    document.getElementById('del-confirm-box').classList.remove('visible');
-    window.showToast('Entry deleted', '"' + e.customer + '" removed.', false);
-  } catch (err) {
-    console.error('delete error:', err);
-    window.showToast('Delete failed', err.message, false);
-  }
+window.confirmDelete=async function(){
+  const delId=window.pendingDelId;if(delId===null)return;
+  const e=window.entries.find(function(en){return en.id===delId||en.firestoreId===delId;});
+  const rep=window.REPS.find(function(r){return r.id===(e?e.repId:-1);});
+  if(!e){window.pendingDelId=null;document.getElementById('del-confirm-box').classList.remove('visible');return;}
+  try{
+    await deleteDoc(doc(db,'entries',String(e.firestoreId)));
+    window.pendingDelId=null;document.getElementById('del-confirm-box').classList.remove('visible');
+    window.showToast('Entry deleted','"'+e.customer+'" removed.',false);
+  }catch(err){console.error('delete error:',err);window.showToast('Delete failed',err.message,false);}
 };
-
-window.startEdit = function (id) {
-  const e = window.entries.find(function(en) { return en.id === id || en.firestoreId === id; });
-  if (!e) return;
-  window.editingId = e.firestoreId;
-  document.getElementById('f-rep').value       = e.repId;
-  document.getElementById('f-customer').value  = e.customer;
-  document.getElementById('f-revenue').value   = e.revenue;
-  document.getElementById('f-saletype').value  = e.saletype;
-  document.getElementById('f-virtual').checked = e.virtual;
-  document.getElementById('f-onsite').checked  = e.onsite;
-  document.getElementById('pill-virtual').classList.toggle('checked', e.virtual);
-  document.getElementById('pill-onsite').classList.toggle('checked',  e.onsite);
+window.startEdit=function(id){
+  const e=window.entries.find(function(en){return en.id===id||en.firestoreId===id;});if(!e)return;
+  window.editingId=e.firestoreId;
+  document.getElementById('f-rep').value=e.repId;document.getElementById('f-customer').value=e.customer;
+  document.getElementById('f-revenue').value=e.revenue;document.getElementById('f-saletype').value=e.saletype;
+  document.getElementById('f-virtual').checked=e.virtual;document.getElementById('f-onsite').checked=e.onsite;
+  document.getElementById('pill-virtual').classList.toggle('checked',e.virtual);
+  document.getElementById('pill-onsite').classList.toggle('checked',e.onsite);
   window.calcPts();
-  const rep = window.REPS.find(function(r) { return r.id === e.repId; });
+  const rep=window.REPS.find(function(r){return r.id===e.repId;});
   document.getElementById('editing-banner').classList.add('visible');
-  document.getElementById('editing-desc').textContent = 'Editing "' + e.customer + '" for ' + (rep ? rep.name : '');
+  document.getElementById('editing-desc').textContent='Editing "'+e.customer+'" for '+(rep?rep.name:'');
   document.getElementById('submit-btn').classList.add('editing');
-  document.getElementById('submit-btn').innerHTML = '<i class="ti ti-pencil"></i> Save Changes';
+  document.getElementById('submit-btn').innerHTML='<i class="ti ti-pencil"></i> Save Changes';
   document.getElementById('cancel-btn').classList.add('visible');
-  window.showProtectedSection('submit');
-  window.scrollTo(0, 0);
+  window.showProtectedSection('submit');window.scrollTo(0,0);
 };
-
-window.startDelete = function (id) {
-  const e = window.entries.find(function(en) { return en.id === id || en.firestoreId === id; });
-  if (!e) return;
-  window.pendingDelId = e.firestoreId || e.id;
-  document.getElementById('del-customer-name').textContent = e.customer;
+window.startDelete=function(id){
+  const e=window.entries.find(function(en){return en.id===id||en.firestoreId===id;});if(!e)return;
+  window.pendingDelId=e.firestoreId||e.id;
+  document.getElementById('del-customer-name').textContent=e.customer;
   document.getElementById('del-confirm-box').classList.add('visible');
-  document.getElementById('del-confirm-box').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  document.getElementById('del-confirm-box').scrollIntoView({behavior:'smooth',block:'nearest'});
 };
-
-(function() {
-  const badge = document.querySelector('.contest-badge');
-  if (!badge) return;
-  const dot = document.createElement('span');
-  dot.title = 'Live data stream active';
-  dot.style.cssText = 'display:inline-block;width:7px;height:7px;border-radius:50%;background:#22c55e;margin-left:6px;vertical-align:middle;box-shadow:0 0 6px #22c55e;animation:livePulse 1.8s ease-in-out infinite;';
+(function(){
+  const badge=document.querySelector('.contest-badge');if(!badge)return;
+  const dot=document.createElement('span');
+  dot.title='Live';dot.style.cssText='display:inline-block;width:7px;height:7px;border-radius:50%;background:#22c55e;margin-left:6px;vertical-align:middle;box-shadow:0 0 6px #22c55e;animation:livePulse 1.8s ease-in-out infinite;';
   badge.appendChild(dot);
-  const s = document.createElement('style');
-  s.textContent = '@keyframes livePulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.4;transform:scale(0.7)}}';
+  const s=document.createElement('style');s.textContent='@keyframes livePulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.4;transform:scale(0.7)}}';
   document.head.appendChild(s);
 })();
-
 console.log('Hunters Cup Firebase connected.');
 </script>
 </body>
